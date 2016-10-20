@@ -104,6 +104,8 @@ namespace Spine {
 				skeletonData.version = (String)skeletonMap["spine"];
 				skeletonData.width = GetFloat(skeletonMap, "width", 0);
 				skeletonData.height = GetFloat(skeletonMap, "height", 0);
+				skeletonData.fps = GetFloat(skeletonMap, "fps", 0);
+				skeletonData.imagesPath = GetString(skeletonMap, "images", null);
 			}
 
 			// Bones.
@@ -123,8 +125,9 @@ namespace Spine {
 				data.scaleY = GetFloat(boneMap, "scaleY", 1);
 				data.shearX = GetFloat(boneMap, "shearX", 0);
 				data.shearY = GetFloat(boneMap, "shearY", 0);
-//				data.inheritRotation = GetBoolean(boneMap, "inheritRotation", true);
-//				data.inheritScale = GetBoolean(boneMap, "inheritScale", true);
+
+				string tm = GetString(boneMap, "transform", TransformMode.Normal.ToString());
+				data.transformMode = (TransformMode)Enum.Parse(typeof(TransformMode), tm, false);
 
 				skeletonData.bones.Add(data);
 			}
@@ -159,6 +162,7 @@ namespace Spine {
 			if (root.ContainsKey("ik")) {
 				foreach (Dictionary<String, Object> constraintMap in (List<Object>)root["ik"]) {
 					IkConstraintData data = new IkConstraintData((String)constraintMap["name"]);
+					data.order = GetInt(constraintMap, "order", 0);
 
 					foreach (String boneName in (List<Object>)constraintMap["bones"]) {
 						BoneData bone = skeletonData.FindBone(boneName);
@@ -181,6 +185,7 @@ namespace Spine {
 			if (root.ContainsKey("transform")) {
 				foreach (Dictionary<String, Object> constraintMap in (List<Object>)root["transform"]) {
 					TransformConstraintData data = new TransformConstraintData((String)constraintMap["name"]);
+					data.order = GetInt(constraintMap, "order", 0);
 
 					foreach (String boneName in (List<Object>)constraintMap["bones"]) {
 						BoneData bone = skeletonData.FindBone(boneName);
@@ -212,6 +217,7 @@ namespace Spine {
 			if(root.ContainsKey("path")) {
 				foreach (Dictionary<String, Object> constraintMap in (List<Object>)root["path"]) {
 					PathConstraintData data = new PathConstraintData((String)constraintMap["name"]);
+					data.order = GetInt(constraintMap, "order", 0);
 
 					foreach (String boneName in (List<Object>)constraintMap["bones"]) {
 						BoneData bone = skeletonData.FindBone(boneName);

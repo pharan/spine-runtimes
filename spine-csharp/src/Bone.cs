@@ -167,128 +167,43 @@ namespace Spine {
 					d = MathUtils.SinDeg(rotationY) * scaleY;
 					break;
 				}
-			case TransformMode.NoRotation: {
-					if (false) {
-						// Summing parent rotations.
-						// 1) Negative parent scale causes bone to rotate.
-						float sum = 0;
-						Bone current = parent;
-						while (current != null) {
-							sum += current.arotation;
-							current = current.parent;
-						}
-						rotation -= sum;
-						float rotationY = rotation + 90 + shearY;
-						float la = MathUtils.CosDeg(rotation + shearX) * scaleX;
-						float lb = MathUtils.CosDeg(rotationY) * scaleY;
-						float lc = MathUtils.SinDeg(rotation + shearX) * scaleX;
-						float ld = MathUtils.SinDeg(rotationY) * scaleY;
-						a = pa * la + pb * lc;
-						b = pa * lb + pb * ld;
-						c = pc * la + pd * lc;
-						d = pc * lb + pd * ld;	
-					} else if (true) {
-						// Old way.
-						// 1) Immediate parent scale is applied in wrong direction.
-						// 2) Negative parent scale causes bone to rotate.
-						pa = 1;
-						pb = 0;
-						pc = 0;
-						pd = 1;
-						float rotationY, la, lb, lc, ld;
-						do {
-							if (!parent.appliedValid) parent.UpdateAppliedTransform();
-							float pr = parent.arotation, psx = parent.ascaleX;
-							rotationY = pr + 90 + parent.ashearY;
-							la = MathUtils.CosDeg(pr + parent.shearX);
-							lb = MathUtils.CosDeg(rotationY);
-							lc = MathUtils.SinDeg(pr + parent.shearX);
-							ld = MathUtils.SinDeg(rotationY);
-							float temp = (pa * la + pb * lc) * psx;
-							pb = (pb * ld + pa * lb) * parent.ascaleY;
-							pa = temp;
-							temp = (pc * la + pd * lc) * psx;
-							pd = (pd * ld + pc * lb) * parent.ascaleY;
-							pc = temp;
-
-							if (psx < 0) lc = -lc;
-							temp = pa * la - pb * lc;
-							pb = pb * ld - pa * lb;
-							pa = temp;
-							temp = pc * la - pd * lc;
-							pd = pd * ld - pc * lb;
-							pc = temp;
-
-							switch (parent.data.transformMode) {
-							case TransformMode.NoScale:
-							case TransformMode.NoScaleOrReflection:
-								goto outer;
-							}
-							parent = parent.parent;
-						} while (parent != null);
-						outer:
-						rotationY = rotation + 90 + shearY;
-						la = MathUtils.CosDeg(rotation + shearX) * scaleX;
-						lb = MathUtils.CosDeg(rotationY) * scaleY;
-						lc = MathUtils.SinDeg(rotation + shearX) * scaleX;
-						ld = MathUtils.SinDeg(rotationY) * scaleY;
-						a = pa * la + pb * lc;
-						b = pa * lb + pb * ld;
-						c = pc * la + pd * lc;
-						d = pc * lb + pd * ld;
+			case TransformMode.NoRotationOrReflection: {
+					float s = pa * pa + pc * pc, prx;
+					if (s > 0.0001f) {
+						s = Math.Abs(pa * pd - pb * pc) / s;
+						pb = pc * s;
+						pd = pa * s;
+						prx = MathUtils.Atan2(pc, pa) * MathUtils.RadDeg;
 					} else {
-						// New way.
-						// 1) Negative scale can cause bone to flip.
-						float psx = (float)Math.Sqrt(pa * pa + pc * pc), psy, pr;
-						if (psx > 0.0001f) {
-							float det = pa * pd - pb * pc;
-							psy = det / psx;
-							pr = MathUtils.Atan2(pc, pa) * MathUtils.RadDeg;
-						} else {
-							psx = 0;
-							psy = (float)Math.Sqrt(pb * pb + pd * pd);
-							pr = 90 - MathUtils.Atan2(pd, pb) * MathUtils.RadDeg;
-						}
-						float blend;
-						if (pr < -90)
-							blend = 1 + (pr + 90) / 90;
-						else if (pr < 0)
-							blend = -pr / 90;
-						else if (pr < 90)
-							blend = pr / 90;
-						else
-							blend = 1 - (pr - 90) / 90;
-						pa = psx + (Math.Abs(psy) * Math.Sign(psx) - psx) * blend;
-						pd = psy + (Math.Abs(psx) * Math.Sign(psy) - psy) * blend;
-						float rotationY = rotation + 90 + shearY;
-						a = pa * MathUtils.CosDeg(rotation + shearX) * scaleX;
-						b = pa * MathUtils.CosDeg(rotationY) * scaleY;
-						c = pd * MathUtils.SinDeg(rotation + shearX) * scaleX;
-						d = pd * MathUtils.SinDeg(rotationY) * scaleY;
+						pa = 0;
+						pc = 0;
+						prx = 90 - MathUtils.Atan2(pd, pb) * MathUtils.RadDeg;
 					}
+					float rx = rotation + shearX - prx;
+					float ry = rotation + shearY - prx + 90;
+					float la = MathUtils.CosDeg(rx) * scaleX;
+					float lb = MathUtils.CosDeg(ry) * scaleY;
+					float lc = MathUtils.SinDeg(rx) * scaleX;
+					float ld = MathUtils.SinDeg(ry) * scaleY;
+					a = pa * la - pb * lc;
+					b = pa * lb - pb * ld;
+					c = pc * la + pd * lc;
+					d = pc * lb + pd * ld;
 					break;
 				}
 			case TransformMode.NoScale:
 			case TransformMode.NoScaleOrReflection: {
 					float cos = MathUtils.CosDeg(rotation), sin = MathUtils.SinDeg(rotation);
-					float za = pa * cos + pb * sin, zb = za;
-					float zc = pc * cos + pd * sin, zd = zc;
+					float za = pa * cos + pb * sin;
+					float zc = pc * cos + pd * sin;
 					float s = (float)Math.Sqrt(za * za + zc * zc);
 					if (s > 0.00001f) s = 1 / s;
 					za *= s;
 					zc *= s;
-					s = (float)Math.Sqrt(zb * zb + zd * zd);
-					if (s > 0.00001f) s = 1 / s;
-					zb *= s;
-					zd *= s;
-					float by = MathUtils.Atan2(zd, zb), r = MathUtils.PI / 2 - (by - MathUtils.Atan2(zc, za));
-					if (r > MathUtils.PI)
-						r -= MathUtils.PI2;
-					else if (r < -MathUtils.PI) r += MathUtils.PI2;
-					r += by;
-					s = (float)Math.Sqrt(zb * zb + zd * zd);
-					zb = MathUtils.Cos(r) * s;
-					zd = MathUtils.Sin(r) * s;
+					s = (float)Math.Sqrt(za * za + zc * zc);
+					float r = MathUtils.PI / 2 + MathUtils.Atan2(zc, za);
+					float zb = MathUtils.Cos(r) * s;
+					float zd = MathUtils.Sin(r) * s;
 					float la = MathUtils.CosDeg(shearX) * scaleX;
 					float lb = MathUtils.CosDeg(90 + shearY) * scaleY;
 					float lc = MathUtils.SinDeg(shearX) * scaleX;

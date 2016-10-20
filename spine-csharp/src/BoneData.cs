@@ -76,9 +76,9 @@ namespace Spine {
 	public enum TransformMode {
 		//0000 0FSR
 		Normal = 0, // 0000
-		NoRotation = 1, // 0001
+		OnlyTranslation = 7, // 0111
+		NoRotationOrReflection = 1, // 0001
 		NoScale = 2, // 0010
 		NoScaleOrReflection = 6, // 0110
-		OnlyTranslation = 7, // 0111
 	}
 }
