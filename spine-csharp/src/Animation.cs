@@ -367,7 +367,7 @@ namespace Spine {
 					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
 
 				x = (x + (frames[frame + X] - x) * percent) * bone.data.scaleX;
-				y = (x + (frames[frame + Y] - y) * percent) * bone.data.scaleY;
+				y = (y + (frames[frame + Y] - y) * percent) * bone.data.scaleY;
 			}
 			if (alpha == 1) {
 				bone.scaleX = x;

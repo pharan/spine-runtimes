@@ -156,7 +156,7 @@ namespace Spine {
 					a = pa * la + pb * lc;
 					b = pa * lb + pb * ld;
 					c = pc * la + pd * lc;
-					d = pc * lb + pd * ld;	
+					d = pc * lb + pd * ld;
 					return;
 				}
 			case TransformMode.OnlyTranslation: {

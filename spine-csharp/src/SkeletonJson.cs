@@ -127,7 +127,7 @@ namespace Spine {
 				data.shearY = GetFloat(boneMap, "shearY", 0);
 
 				string tm = GetString(boneMap, "transform", TransformMode.Normal.ToString());
-				data.transformMode = (TransformMode)Enum.Parse(typeof(TransformMode), tm, false);
+				data.transformMode = (TransformMode)Enum.Parse(typeof(TransformMode), tm, true);
 
 				skeletonData.bones.Add(data);
 			}
