@@ -1,32 +1,31 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 package com.esotericsoftware.spine.attachments;
@@ -110,7 +109,6 @@ public class MeshAttachment extends VertexAttachment {
 				| ((int)(skeletonColor.g * slotColor.g * meshColor.g * multiplier) << 8) //
 				| (int)(skeletonColor.r * slotColor.r * meshColor.r * multiplier));
 
-		float x = skeleton.getX(), y = skeleton.getY();
 		FloatArray deformArray = slot.getAttachmentVertices();
 		float[] vertices = this.vertices, worldVertices = this.worldVertices;
 		int[] bones = this.bones;
@@ -118,8 +116,7 @@ public class MeshAttachment extends VertexAttachment {
 			int verticesLength = vertices.length;
 			if (deformArray.size > 0) vertices = deformArray.items;
 			Bone bone = slot.getBone();
-			x += bone.getWorldX();
-			y += bone.getWorldY();
+			float x = bone.getWorldX(), y = bone.getWorldY();
 			float a = bone.getA(), b = bone.getB(), c = bone.getC(), d = bone.getD();
 			for (int v = 0, w = 0; v < verticesLength; v += 2, w += 5) {
 				float vx = vertices[v], vy = vertices[v + 1];
@@ -132,7 +129,7 @@ public class MeshAttachment extends VertexAttachment {
 		Object[] skeletonBones = skeleton.getBones().items;
 		if (deformArray.size == 0) {
 			for (int w = 0, v = 0, b = 0, n = bones.length; v < n; w += 5) {
-				float wx = x, wy = y;
+				float wx = 0, wy = 0;
 				int nn = bones[v++] + v;
 				for (; v < nn; v++, b += 3) {
 					Bone bone = (Bone)skeletonBones[bones[v]];
@@ -147,7 +144,7 @@ public class MeshAttachment extends VertexAttachment {
 		} else {
 			float[] deform = deformArray.items;
 			for (int w = 0, v = 0, b = 0, f = 0, n = bones.length; v < n; w += 5) {
-				float wx = x, wy = y;
+				float wx = 0, wy = 0;
 				int nn = bones[v++] + v;
 				for (; v < nn; v++, b += 3, f += 2) {
 					Bone bone = (Bone)skeletonBones[bones[v]];

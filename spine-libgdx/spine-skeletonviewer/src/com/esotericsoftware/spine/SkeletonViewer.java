@@ -1,32 +1,31 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 package com.esotericsoftware.spine;
@@ -76,6 +75,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.esotericsoftware.spine.AnimationState.AnimationStateAdapter;
 import com.esotericsoftware.spine.AnimationState.TrackEntry;
 
 public class SkeletonViewer extends ApplicationAdapter {
@@ -94,6 +94,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 	FileHandle skeletonFile;
 	long lastModified;
 	float lastModifiedCheck, reloadTimer;
+	Preferences prefs;
 
 	public void create () {
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
@@ -103,16 +104,20 @@ public class SkeletonViewer extends ApplicationAdapter {
 			}
 		});
 
+		prefs = Gdx.app.getPreferences("spine-skeletonviewer");
 		ui = new UI();
 		batch = new PolygonSpriteBatch();
 		renderer = new SkeletonMeshRenderer();
 		debugRenderer = new SkeletonRendererDebug();
 		skeletonX = (int)(ui.window.getWidth() + (Gdx.graphics.getWidth() - ui.window.getWidth()) / 2);
 		skeletonY = Gdx.graphics.getHeight() / 4;
+		ui.loadPrefs();
 
 		loadSkeleton(
 			Gdx.files.internal(Gdx.app.getPreferences("spine-skeletonviewer").getString("lastFile", "spineboy/spineboy.json")),
 			false);
+
+		ui.loadPrefs();
 	}
 
 	void loadSkeleton (final FileHandle skeletonFile, boolean reload) {
@@ -168,13 +173,17 @@ public class SkeletonViewer extends ApplicationAdapter {
 
 		skeleton = new Skeleton(skeletonData);
 		skeleton.setToSetupPose();
-		skeleton = new Skeleton(skeleton);
+		skeleton = new Skeleton(skeleton); // Tests copy constructors.
 		skeleton.updateWorldTransform();
 
 		state = new AnimationState(new AnimationStateData(skeletonData));
+		state.addListener(new AnimationStateAdapter() {
+			public void event (TrackEntry entry, Event event) {
+				ui.toast(event.getData().getName());
+			}
+		});
 
 		this.skeletonFile = skeletonFile;
-		Preferences prefs = Gdx.app.getPreferences("spine-skeletonviewer");
 		prefs.putString("lastFile", skeletonFile.path());
 		prefs.flush();
 		lastModified = skeletonFile.lastModified();
@@ -199,10 +208,23 @@ public class SkeletonViewer extends ApplicationAdapter {
 		// Configure skeleton from UI.
 
 		if (ui.skinList.getSelected() != null) skeleton.setSkin(ui.skinList.getSelected());
-		if (ui.animationList.getSelected() != null)
-			state.setAnimation(0, ui.animationList.getSelected(), ui.loopCheckbox.isChecked());
+		setAnimation();
 
 		if (reload) ui.toast("Reloaded.");
+	}
+
+	void setAnimation () {
+		if (ui.animationList.getSelected() == null) return;
+		TrackEntry current = state.getCurrent(0);
+		if (current == null) {
+			state.setEmptyAnimation(0, 0);
+			TrackEntry entry = state.addAnimation(0, ui.animationList.getSelected(), ui.loopCheckbox.isChecked(), 0);
+			entry.setMixDuration(ui.mixSlider.getValue());
+			entry.setTrackEnd(Integer.MAX_VALUE);
+		} else {
+			TrackEntry entry = state.setAnimation(0, ui.animationList.getSelected(), ui.loopCheckbox.isChecked());
+			entry.setTrackEnd(Integer.MAX_VALUE);
+		}
 	}
 
 	public void render () {
@@ -210,7 +232,18 @@ public class SkeletonViewer extends ApplicationAdapter {
 
 		float delta = Gdx.graphics.getDeltaTime();
 
+		// Draw skeleton origin lines.
+		ShapeRenderer shapes = debugRenderer.getShapeRenderer();
+		if (state != null) {
+			shapes.setColor(Color.DARK_GRAY);
+			shapes.begin(ShapeType.Line);
+			shapes.line(skeleton.x, -99999, skeleton.x, 99999);
+			shapes.line(-99999, skeleton.y, 99999, skeleton.y);
+			shapes.end();
+		}
+
 		if (skeleton != null) {
+			// Reload if skeleton file was modified.
 			if (reloadTimer <= 0) {
 				lastModifiedCheck -= delta;
 				if (lastModifiedCheck < 0) {
@@ -223,6 +256,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 				if (reloadTimer <= 0) loadSkeleton(skeletonFile, true);
 			}
 
+			// Pose and render skeleton.
 			state.getData().setDefaultMix(ui.mixSlider.getValue());
 			renderer.setPremultipliedAlpha(ui.premultipliedCheckbox.isChecked());
 
@@ -250,20 +284,26 @@ public class SkeletonViewer extends ApplicationAdapter {
 			debugRenderer.draw(skeleton);
 		}
 
+		// Render UI.
 		ui.stage.act();
 		ui.stage.draw();
 
-		// Draw indicator for timeline position.
+		// Draw indicator lines for animation and mix times.
 		if (state != null) {
-			ShapeRenderer shapes = debugRenderer.getShapeRenderer();
 			TrackEntry entry = state.getCurrent(0);
 			if (entry != null) {
-				float percent = entry.getTime() / entry.getEndTime();
-				if (entry.getLoop()) percent %= 1;
+				shapes.begin(ShapeType.Line);
+
+				float percent = entry.getAnimationTime() / entry.getAnimationEnd();
 				float x = ui.window.getRight() + (Gdx.graphics.getWidth() - ui.window.getRight()) * percent;
 				shapes.setColor(Color.CYAN);
-				shapes.begin(ShapeType.Line);
 				shapes.line(x, 0, x, 20);
+
+				percent = entry.getMixDuration() == 0 ? 1 : Math.min(1, entry.getMixTime() / entry.getMixDuration());
+				x = ui.window.getRight() + (Gdx.graphics.getWidth() - ui.window.getRight()) * percent;
+				shapes.setColor(Color.RED);
+				shapes.line(x, 0, x, 20);
+
 				shapes.end();
 			}
 		}
@@ -288,9 +328,9 @@ public class SkeletonViewer extends ApplicationAdapter {
 		List<String> skinList = new List(skin);
 		CheckBox loopCheckbox = new CheckBox("Loop", skin);
 		CheckBox premultipliedCheckbox = new CheckBox("Premultiplied", skin);
-		Slider mixSlider = new Slider(0f, 2, 0.01f, false, skin);
+		Slider mixSlider = new Slider(0, 4, 0.01f, false, skin);
 		Label mixLabel = new Label("0.3", skin);
-		Slider speedSlider = new Slider(0.1f, 3, 0.01f, false, skin);
+		Slider speedSlider = new Slider(0, 3, 0.01f, false, skin);
 		Label speedLabel = new Label("1.0", skin);
 		CheckBox flipXCheckbox = new CheckBox("X", skin);
 		CheckBox flipYCheckbox = new CheckBox("Y", skin);
@@ -308,10 +348,9 @@ public class SkeletonViewer extends ApplicationAdapter {
 		TextButton slotsSetupPoseButton = new TextButton("Slots", skin);
 		TextButton setupPoseButton = new TextButton("Both", skin);
 		WidgetGroup toasts = new WidgetGroup();
+		boolean prefsLoaded;
 
 		public UI () {
-			// Configure widgets.
-
 			animationList.getSelection().setRequired(false);
 
 			premultipliedCheckbox.setChecked(true);
@@ -319,12 +358,13 @@ public class SkeletonViewer extends ApplicationAdapter {
 			loopCheckbox.setChecked(true);
 
 			scaleSlider.setValue(1);
-			scaleSlider.setSnapToValues(new float[] {1}, 0.1f);
+			scaleSlider.setSnapToValues(new float[] {1, 1.5f, 2, 2.5f, 3, 3.5f}, 0.01f);
 
 			mixSlider.setValue(0.3f);
+			mixSlider.setSnapToValues(new float[] {1, 1.5f, 2, 2.5f, 3, 3.5f}, 0.1f);
 
 			speedSlider.setValue(1);
-			speedSlider.setSnapToValues(new float[] {1}, 0.1f);
+			speedSlider.setSnapToValues(new float[] {0.5f, 0.75f, 1, 1.25f, 1.5f, 2, 2.5f}, 0.1f);
 
 			window.setMovable(false);
 			window.setResizable(false);
@@ -390,7 +430,7 @@ public class SkeletonViewer extends ApplicationAdapter {
 			stage.addActor(window);
 
 			{
-				Table table = new Table(skin);
+				Table table = new Table();
 				table.setFillParent(true);
 				table.setTouchable(Touchable.disabled);
 				stage.addActor(table);
@@ -398,8 +438,16 @@ public class SkeletonViewer extends ApplicationAdapter {
 				table.add(toasts);
 			}
 
-			// Events.
+			{
+				Table table = new Table();
+				table.setFillParent(true);
+				table.setTouchable(Touchable.disabled);
+				stage.addActor(table);
+				table.pad(10).top().right();
+				table.add(new Label("", skin, "default", Color.LIGHT_GRAY)); // Version.
+			}
 
+			// Events.
 			window.addListener(new InputListener() {
 				public boolean touchDown (InputEvent event, float x, float y, int pointer, int button) {
 					event.cancel();
@@ -479,10 +527,16 @@ public class SkeletonViewer extends ApplicationAdapter {
 					if (state != null) {
 						String name = animationList.getSelected();
 						if (name == null)
-							state.clearTrack(0);
+							state.setEmptyAnimation(0, ui.mixSlider.getValue());
 						else
-							state.setAnimation(0, name, loopCheckbox.isChecked());
+							setAnimation();
 					}
+				}
+			});
+
+			loopCheckbox.addListener(new ChangeListener() {
+				public void changed (ChangeEvent event, Actor actor) {
+					setAnimation();
 				}
 			});
 
@@ -510,7 +564,31 @@ public class SkeletonViewer extends ApplicationAdapter {
 					skeletonY = Gdx.graphics.getHeight() - screenY;
 					return false;
 				}
+
+				public boolean touchUp (int screenX, int screenY, int pointer, int button) {
+					savePrefs();
+					return false;
+				}
 			}));
+
+			ChangeListener savePrefsListener = new ChangeListener() {
+				public void changed (ChangeEvent event, Actor actor) {
+					if (actor instanceof Slider && ((Slider)actor).isDragging()) return;
+					savePrefs();
+				}
+			};
+			debugBonesCheckbox.addListener(savePrefsListener);
+			debugRegionsCheckbox.addListener(savePrefsListener);
+			debugMeshHullCheckbox.addListener(savePrefsListener);
+			debugMeshTrianglesCheckbox.addListener(savePrefsListener);
+			debugPathsCheckbox.addListener(savePrefsListener);
+			premultipliedCheckbox.addListener(savePrefsListener);
+			loopCheckbox.addListener(savePrefsListener);
+			speedSlider.addListener(savePrefsListener);
+			mixSlider.addListener(savePrefsListener);
+			scaleSlider.addListener(savePrefsListener);
+			animationList.addListener(savePrefsListener);
+			skinList.addListener(savePrefsListener);
 		}
 
 		private Table table (Actor... actors) {
@@ -536,6 +614,43 @@ public class SkeletonViewer extends ApplicationAdapter {
 				actor.addAction(moveBy(0, table.getHeight(), 0.3f));
 			toasts.addActor(table);
 			toasts.getParent().toFront();
+		}
+
+		void savePrefs () {
+			if (!prefsLoaded) return;
+			prefs.putBoolean("debugBones", debugBonesCheckbox.isChecked());
+			prefs.putBoolean("debugRegions", debugRegionsCheckbox.isChecked());
+			prefs.putBoolean("debugMeshHull", debugMeshHullCheckbox.isChecked());
+			prefs.putBoolean("debugMeshTriangles", debugMeshTrianglesCheckbox.isChecked());
+			prefs.putBoolean("debugPaths", debugPathsCheckbox.isChecked());
+			prefs.putBoolean("premultiplied", premultipliedCheckbox.isChecked());
+			prefs.putBoolean("loop", loopCheckbox.isChecked());
+			prefs.putFloat("speed", speedSlider.getValue());
+			prefs.putFloat("mix", mixSlider.getValue());
+			prefs.putFloat("scale", scaleSlider.getValue());
+			prefs.putInteger("x", skeletonX);
+			prefs.putInteger("y", skeletonY);
+			if (animationList.getSelected() != null) prefs.putString("animationName", animationList.getSelected());
+			if (skinList.getSelected() != null) prefs.putString("skinName", skinList.getSelected());
+			prefs.flush();
+		}
+
+		void loadPrefs () {
+			debugBonesCheckbox.setChecked(prefs.getBoolean("debugBones", true));
+			debugRegionsCheckbox.setChecked(prefs.getBoolean("debugRegions", false));
+			debugMeshHullCheckbox.setChecked(prefs.getBoolean("debugMeshHull", false));
+			debugMeshTrianglesCheckbox.setChecked(prefs.getBoolean("debugMeshTriangles", false));
+			debugPathsCheckbox.setChecked(prefs.getBoolean("debugPaths", true));
+			premultipliedCheckbox.setChecked(prefs.getBoolean("premultiplied", true));
+			loopCheckbox.setChecked(prefs.getBoolean("loop", false));
+			speedSlider.setValue(prefs.getFloat("speed", 0.3f));
+			mixSlider.setValue(prefs.getFloat("mix", 0.3f));
+			scaleSlider.setValue(prefs.getFloat("scale", 1));
+			skeletonX = prefs.getInteger("x", 0);
+			skeletonY = prefs.getInteger("y", 0);
+			animationList.setSelected(prefs.getString("animationName", null));
+			skinList.setSelected(prefs.getString("skinName", null));
+			prefsLoaded = true;
 		}
 	}
 

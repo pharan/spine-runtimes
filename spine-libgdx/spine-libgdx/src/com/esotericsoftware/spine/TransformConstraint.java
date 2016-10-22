@@ -1,3 +1,32 @@
+/******************************************************************************
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
+ * All rights reserved.
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
+ * or other intellectual property or proprietary rights notices on or in the
+ * Software, including any copy thereof. Redistributions in binary or source
+ * form must include this license and terms.
+ *
+ * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+ * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
 package com.esotericsoftware.spine;
 
@@ -6,7 +35,7 @@ import static com.badlogic.gdx.math.MathUtils.*;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
-public class TransformConstraint implements Updatable {
+public class TransformConstraint implements Constraint {
 	final TransformConstraintData data;
 	final Array<Bone> bones;
 	Bone target;
@@ -53,8 +82,9 @@ public class TransformConstraint implements Updatable {
 		Array<Bone> bones = this.bones;
 		for (int i = 0, n = bones.size; i < n; i++) {
 			Bone bone = bones.get(i);
+			boolean modified = false;
 
-			if (rotateMix > 0) {
+			if (rotateMix != 0) {
 				float a = bone.a, b = bone.b, c = bone.c, d = bone.d;
 				float r = atan2(tc, ta) - atan2(c, a) + data.offsetRotation * degRad;
 				if (r > PI)
@@ -66,26 +96,29 @@ public class TransformConstraint implements Updatable {
 				bone.b = cos * b - sin * d;
 				bone.c = sin * a + cos * c;
 				bone.d = sin * b + cos * d;
+				modified = true;
 			}
 
-			if (translateMix > 0) {
+			if (translateMix != 0) {
 				Vector2 temp = this.temp;
 				target.localToWorld(temp.set(data.offsetX, data.offsetY));
 				bone.worldX += (temp.x - bone.worldX) * translateMix;
 				bone.worldY += (temp.y - bone.worldY) * translateMix;
+				modified = true;
 			}
 
 			if (scaleMix > 0) {
-				float bs = (float)Math.sqrt(bone.a * bone.a + bone.c * bone.c);
+				float s = (float)Math.sqrt(bone.a * bone.a + bone.c * bone.c);
 				float ts = (float)Math.sqrt(ta * ta + tc * tc);
-				float s = bs > 0.00001f ? (bs + (ts - bs + data.offsetScaleX) * scaleMix) / bs : 0;
+				if (s > 0.00001f) s = (s + (ts - s + data.offsetScaleX) * scaleMix) / s;
 				bone.a *= s;
 				bone.c *= s;
-				bs = (float)Math.sqrt(bone.b * bone.b + bone.d * bone.d);
+				s = (float)Math.sqrt(bone.b * bone.b + bone.d * bone.d);
 				ts = (float)Math.sqrt(tb * tb + td * td);
-				s = bs > 0.00001f ? (bs + (ts - bs + data.offsetScaleY) * scaleMix) / bs : 0;
+				if (s > 0.00001f) s = (s + (ts - s + data.offsetScaleY) * scaleMix) / s;
 				bone.b *= s;
 				bone.d *= s;
+				modified = true;
 			}
 
 			if (shearMix > 0) {
@@ -99,8 +132,15 @@ public class TransformConstraint implements Updatable {
 				float s = (float)Math.sqrt(b * b + d * d);
 				bone.b = cos(r) * s;
 				bone.d = sin(r) * s;
+				modified = true;
 			}
+
+			if (modified) bone.appliedValid = false;
 		}
+	}
+
+	public int getOrder () {
+		return data.order;
 	}
 
 	public Array<Bone> getBones () {

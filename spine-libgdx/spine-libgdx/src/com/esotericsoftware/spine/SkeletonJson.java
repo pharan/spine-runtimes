@@ -1,32 +1,31 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
 package com.esotericsoftware.spine;
@@ -56,6 +55,7 @@ import com.esotericsoftware.spine.Animation.ShearTimeline;
 import com.esotericsoftware.spine.Animation.Timeline;
 import com.esotericsoftware.spine.Animation.TransformConstraintTimeline;
 import com.esotericsoftware.spine.Animation.TranslateTimeline;
+import com.esotericsoftware.spine.BoneData.TransformMode;
 import com.esotericsoftware.spine.PathConstraintData.PositionMode;
 import com.esotericsoftware.spine.PathConstraintData.RotateMode;
 import com.esotericsoftware.spine.PathConstraintData.SpacingMode;
@@ -109,6 +109,7 @@ public class SkeletonJson {
 			skeletonData.version = skeletonMap.getString("spine", null);
 			skeletonData.width = skeletonMap.getFloat("width", 0);
 			skeletonData.height = skeletonMap.getFloat("height", 0);
+			skeletonData.fps = skeletonMap.getFloat("fps", 0);
 			skeletonData.imagesPath = skeletonMap.getString("images", null);
 		}
 
@@ -129,8 +130,7 @@ public class SkeletonJson {
 			data.scaleY = boneMap.getFloat("scaleY", 1);
 			data.shearX = boneMap.getFloat("shearX", 0);
 			data.shearY = boneMap.getFloat("shearY", 0);
-			data.inheritRotation = boneMap.getBoolean("inheritRotation", true);
-			data.inheritScale = boneMap.getBoolean("inheritScale", true);
+			data.transformMode = TransformMode.valueOf(boneMap.getString("transform", TransformMode.normal.name()));
 
 			String color = boneMap.getString("color", null);
 			if (color != null) data.getColor().set(Color.valueOf(color));
@@ -157,6 +157,7 @@ public class SkeletonJson {
 		// IK constraints.
 		for (JsonValue constraintMap = root.getChild("ik"); constraintMap != null; constraintMap = constraintMap.next) {
 			IkConstraintData data = new IkConstraintData(constraintMap.getString("name"));
+			data.order = constraintMap.getInt("order", 0);
 
 			for (JsonValue boneMap = constraintMap.getChild("bones"); boneMap != null; boneMap = boneMap.next) {
 				String boneName = boneMap.asString();
@@ -178,6 +179,7 @@ public class SkeletonJson {
 		// Transform constraints.
 		for (JsonValue constraintMap = root.getChild("transform"); constraintMap != null; constraintMap = constraintMap.next) {
 			TransformConstraintData data = new TransformConstraintData(constraintMap.getString("name"));
+			data.order = constraintMap.getInt("order", 0);
 
 			for (JsonValue boneMap = constraintMap.getChild("bones"); boneMap != null; boneMap = boneMap.next) {
 				String boneName = boneMap.asString();
@@ -208,6 +210,7 @@ public class SkeletonJson {
 		// Path constraints.
 		for (JsonValue constraintMap = root.getChild("path"); constraintMap != null; constraintMap = constraintMap.next) {
 			PathConstraintData data = new PathConstraintData(constraintMap.getString("name"));
+			data.order = constraintMap.getInt("order", 0);
 
 			for (JsonValue boneMap = constraintMap.getChild("bones"); boneMap != null; boneMap = boneMap.next) {
 				String boneName = boneMap.asString();
