@@ -33,6 +33,8 @@ using UnityEditor;
 using UnityEngine;
 
 namespace Spine.Unity.Editor {	
+	using EventType = UnityEngine.EventType;
+
 	[CustomEditor(typeof(BoneFollower))]
 	public class BoneFollowerInspector : UnityEditor.Editor {
 		SerializedProperty boneName, skeletonRenderer, followZPosition, followBoneRotation, followSkeletonFlip;
@@ -62,7 +64,7 @@ namespace Spine.Unity.Editor {
 
 			// Find Renderer
 			if (skeletonRenderer.objectReferenceValue == null) {
-				SkeletonRenderer parentRenderer = BoneFollowerInspector.GetInParent<SkeletonRenderer>(targetBoneFollower.transform);
+				SkeletonRenderer parentRenderer = targetBoneFollower.transform.GetComponentInParent<SkeletonRenderer>();
 				if (parentRenderer != null && parentRenderer.gameObject != targetBoneFollower.gameObject) {
 					skeletonRenderer.objectReferenceValue = parentRenderer;
 					Debug.Log("Inspector automatically assigned BoneFollower.SkeletonRenderer");
@@ -108,20 +110,6 @@ namespace Spine.Unity.Editor {
 			bool wasUndo = (current.type == EventType.ValidateCommand && current.commandName == "UndoRedoPerformed");
 			if (serializedObject.ApplyModifiedProperties() || wasUndo)
 				targetBoneFollower.Initialize();
-		}
-
-		public static T GetInParent<T> (Transform origin) where T : Component {
-			#if UNITY_4_3
-			Transform parent = origin.parent;
-			while (parent.GetComponent<T>() == null) {
-				parent = parent.parent;
-				if(parent == null)
-					return default(T);
-			}
-			return parent.GetComponent<T>();
-			#else
-			return origin.GetComponentInParent<T>();
-			#endif
 		}
 	}
 

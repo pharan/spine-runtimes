@@ -74,7 +74,7 @@ namespace Spine.Unity.Editor {
 			var parentGameObject = Selection.activeObject as GameObject;
 			var parentTransform = parentGameObject == null ? null : parentGameObject.transform;
 
-			var gameObject = new GameObject("New SkeletonRenderer", typeof(T));
+			var gameObject = new GameObject(name, typeof(T));
 			gameObject.transform.SetParent(parentTransform, false);
 			EditorUtility.FocusProjectWindow();
 			Selection.activeObject = gameObject;

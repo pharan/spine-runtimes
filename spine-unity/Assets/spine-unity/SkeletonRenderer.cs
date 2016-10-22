@@ -35,7 +35,6 @@
 #define SPINE_OPTIONAL_SOLVETANGENTS
 
 //#define SPINE_OPTIONAL_FRONTFACING
-//#define SPINE_OPTIONAL_SUBMESHRENDERER // Deprecated
 
 using System;
 using System.Collections.Generic;
@@ -99,10 +98,6 @@ namespace Spine.Unity {
 				}
 			}
 		}
-		#endif
-
-		#if SPINE_OPTIONAL_SUBMESHRENDERER
-		private Spine.Unity.Modules.SkeletonUtilitySubmeshRenderer[] submeshRenderers;
 		#endif
 
 		#if SPINE_OPTIONAL_MATERIALOVERRIDE
@@ -213,10 +208,6 @@ namespace Spine.Unity {
 			for (int i = 0; i < separatorSlotNames.Length; i++)
 				separatorSlots.Add(skeleton.FindSlot(separatorSlotNames[i]));
 
-			#if SPINE_OPTIONAL_SUBMESHRENDERER
-			submeshRenderers = GetComponentsInChildren<Spine.Unity.Modules.SkeletonUtilitySubmeshRenderer>();
-			#endif
-
 			LateUpdate();
 
 			if (OnRebuild != null)
@@ -231,9 +222,6 @@ namespace Spine.Unity {
 				(!meshRenderer.enabled)
 				#if SPINE_OPTIONAL_RENDEROVERRIDE
 				&& this.generateMeshOverride == null
-				#endif
-				#if SPINE_OPTIONAL_SUBMESHRENDERER
-				&& submeshRenderers.Length > 0
 				#endif
 			)
 				return;
@@ -529,18 +517,6 @@ namespace Spine.Unity {
 			meshFilter.sharedMesh = currentMesh;
 			currentSmartMesh.instructionUsed.Set(workingInstruction);
 
-
-			#if SPINE_OPTIONAL_SUBMESHRENDERER
-			if (submeshRenderers.Length > 0) {
-				for (int i = 0; i < submeshRenderers.Length; i++) {
-					var submeshRenderer = submeshRenderers[i];
-					if (submeshRenderer.submeshIndex < sharedMaterials.Length)
-						submeshRenderer.SetMesh(meshRenderer, currentMesh, sharedMaterials[submeshRenderer.submeshIndex]);
-					else
-						submeshRenderer.GetComponent<Renderer>().enabled = false;
-				}
-			}
-			#endif
 		}
 
 		static bool CheckIfMustUpdateMeshStructure (SmartMesh.Instruction a, SmartMesh.Instruction b) {
@@ -703,22 +679,6 @@ namespace Spine.Unity {
 
 				firstVertex += attachmentVertexCount;
 			}
-		}
-		#endif
-
-		#if UNITY_EDITOR
-		void OnDrawGizmos () {
-			// Make scene view selection easier by drawing a clear gizmo over the skeleton.
-			meshFilter = GetComponent<MeshFilter>();
-			if (meshFilter == null) return;
-
-			Mesh mesh = meshFilter.sharedMesh;
-			if (mesh == null) return;
-
-			Bounds meshBounds = mesh.bounds;
-			Gizmos.color = Color.clear;
-			Gizmos.matrix = transform.localToWorldMatrix;
-			Gizmos.DrawCube(meshBounds.center, meshBounds.size);
 		}
 		#endif
 

@@ -3,15 +3,11 @@
  * Full irrevocable rights and permissions granted to Esoteric Software
 *****************************************************************************/
 #define SPINE_SKELETON_ANIMATOR
-#define SPINE_BAKING
+//#define SPINE_BAKING
 
 using System;
 using System.Collections.Generic;
 using UnityEditor;
-
-#if !UNITY_4_3
-using UnityEditor.AnimatedValues;
-#endif
 using UnityEngine;
 using Spine;
 

@@ -7,11 +7,7 @@
 using UnityEngine;
 using UnityEditor;
 
-#if UNITY_4_3
-//nothing
-#else
 using UnityEditor.AnimatedValues;
-#endif
 using System.Collections.Generic;
 using Spine;
 
@@ -53,11 +49,7 @@ namespace Spine.Unity.Editor {
 		}
 
 		static SkeletonUtilityInspector () {
-			#if UNITY_4_3
-			showSlots = false;
-			#else
 			showSlots = new AnimBool(false);
-			#endif
 		}
 
 		SkeletonUtility skeletonUtility;
@@ -67,13 +59,8 @@ namespace Spine.Unity.Editor {
 		bool isPrefab;
 		Dictionary<Slot, List<Attachment>> attachmentTable = new Dictionary<Slot, List<Attachment>>();
 
-
 		//GUI stuff
-		#if UNITY_4_3
-		static bool showSlots;
-		#else
 		static AnimBool showSlots;
-		#endif
 
 		void OnEnable () {
 			skeletonUtility = (SkeletonUtility)target;
@@ -167,12 +154,8 @@ namespace Spine.Unity.Editor {
 				SceneView.RepaintAll();
 			}
 
-			#if UNITY_4_3
-			showSlots = EditorGUILayout.Foldout(showSlots, "Slots");
-			#else
 			showSlots.target = EditorGUILayout.Foldout(showSlots.target, "Slots");
 			if (EditorGUILayout.BeginFadeGroup(showSlots.faded)) {
-			#endif
 				foreach (KeyValuePair<Slot, List<Attachment>> pair in attachmentTable) {
 
 					Slot slot = pair.Key;
@@ -224,14 +207,11 @@ namespace Spine.Unity.Editor {
 						GUI.contentColor = Color.white;
 					}
 				}
-			#if UNITY_4_3
-
-			#else
 			}
+
 			EditorGUILayout.EndFadeGroup();
 			if (showSlots.isAnimating)
 				Repaint();
-			#endif
 		}
 
 		void SpawnHierarchyContextMenu () {

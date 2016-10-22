@@ -187,7 +187,7 @@ namespace Spine.Unity.Editor {
 			//serializedObject.Update();
 			DrawInspectorGUI();
 			if (serializedObject.ApplyModifiedProperties() ||
-				(UnityEngine.Event.current.type == EventType.ValidateCommand && UnityEngine.Event.current.commandName == "UndoRedoPerformed")
+				(UnityEngine.Event.current.type == UnityEngine.EventType.ValidateCommand && UnityEngine.Event.current.commandName == "UndoRedoPerformed")
 			) {
 				if (!Application.isPlaying)
 					((SkeletonRenderer)target).Initialize(true);

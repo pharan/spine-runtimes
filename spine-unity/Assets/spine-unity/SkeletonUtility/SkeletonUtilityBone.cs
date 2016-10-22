@@ -1,13 +1,9 @@
-
-
 /*****************************************************************************
  * Skeleton Utility created by Mitch Thompson
  * Full irrevocable rights and permissions granted to Esoteric Software
 *****************************************************************************/
 
 using System;
-using System.IO;
-using System.Collections.Generic;
 using UnityEngine;
 using Spine;
 
@@ -33,10 +29,6 @@ namespace Spine.Unity {
 		public bool position;
 		public bool rotation;
 		public bool scale;
-		// MITCH : remove flipX
-		// Kept these fields public to retain serialization. Probably remove eventually?
-		public bool flip;
-		public bool flipX;
 		[Range(0f, 1f)]
 		public float overrideAlpha = 1;
 
@@ -49,12 +41,6 @@ namespace Spine.Unity {
 
 		protected Transform cachedTransform;
 		protected Transform skeletonTransform;
-
-		// MITCH : nonuniform scale
-		//	private bool nonUniformScaleWarning;
-		//	public bool NonUniformScaleWarning {
-		//		get { return nonUniformScaleWarning; }
-		//	}
 
 		private bool incompatibleTransformMode;
 		public bool IncompatibleTransformMode {
@@ -74,7 +60,7 @@ namespace Spine.Unity {
 		}
 
 		void OnEnable () {
-			skeletonUtility = SkeletonUtility.GetInParent<SkeletonUtility>(transform);
+			skeletonUtility = transform.GetComponentInParent<SkeletonUtility>();
 
 			if (skeletonUtility == null)
 				return;
@@ -116,28 +102,13 @@ namespace Spine.Unity {
 
 			float skeletonFlipRotation = (skeleton.flipX ^ skeleton.flipY) ? -1f : 1f;
 
-			// MITCH : remove flipX
-			//		float flipCompensation = 0;
-			//		if (flip && (flipX || (flipX != bone.flipX)) && bone.parent != null) {
-			//			flipCompensation = bone.parent.WorldRotation * -2;
-			//		}
-
 			if (mode == Mode.Follow) {
-				// MITCH : remove flipX
-				//			if (flip)
-				//				flipX = bone.flipX;
-
 				if (position)
 					cachedTransform.localPosition = new Vector3(bone.x, bone.y, 0);
 
 				if (rotation) {
 					if (!bone.data.transformMode.InheritsRotation()) {
-						// MITCH : remove flipX
-						//if (bone.FlipX) {
-						//	cachedTransform.localRotation = Quaternion.Euler(0, 180, bone.rotationIK - flipCompensation);
-						//} else {
 						cachedTransform.localRotation = Quaternion.Euler(0, 0, bone.AppliedRotation);
-						//}
 					} else {
 						Vector3 euler = skeletonTransform.rotation.eulerAngles;
 						cachedTransform.rotation = Quaternion.Euler(euler.x, euler.y, euler.z + (bone.WorldRotationX * skeletonFlipRotation));
@@ -161,21 +132,6 @@ namespace Spine.Unity {
 
 					if (rotation) {
 						float angle = Mathf.LerpAngle(bone.Rotation, cachedTransform.localRotation.eulerAngles.z, overrideAlpha);
-
-						// MITCH : remove flipX
-						//					float angle = Mathf.LerpAngle(bone.Rotation, cachedTransform.localRotation.eulerAngles.z, overrideAlpha) + flipCompensation;
-						//					if (flip) {
-						//                        
-						//						if ((!flipX && bone.flipX)) {
-						//							angle -= flipCompensation;
-						//						}
-						//
-						//						//TODO fix this...
-						//						if (angle >= 360)
-						//							angle -= 360;
-						//						else if (angle <= -360)
-						//							angle += 360;
-						//					}
 						bone.Rotation = angle;
 						bone.AppliedRotation = angle;
 					}
@@ -183,13 +139,8 @@ namespace Spine.Unity {
 					if (scale) {
 						bone.scaleX = Mathf.Lerp(bone.scaleX, cachedTransform.localScale.x, overrideAlpha);
 						bone.scaleY = Mathf.Lerp(bone.scaleY, cachedTransform.localScale.y, overrideAlpha);
-						// MITCH : nonuniform scale
-						//nonUniformScaleWarning = (bone.scaleX != bone.scaleY);
 					}
 
-					// MITCH : remove flipX
-					//if (flip)
-					//	bone.flipX = flipX;
 				} else {
 					if (transformLerpComplete)
 						return;
@@ -202,22 +153,7 @@ namespace Spine.Unity {
 
 					// MITCH
 					if (rotation) {
-						float angle = Mathf.LerpAngle(bone.Rotation, Quaternion.LookRotation(flipX ? Vector3.forward * -1 : Vector3.forward, parentReference.InverseTransformDirection(cachedTransform.up)).eulerAngles.z, overrideAlpha);
-
-						// MITCH : remove flipX
-						//					float angle = Mathf.LerpAngle(bone.Rotation, Quaternion.LookRotation(flipX ? Vector3.forward * -1 : Vector3.forward, parentReference.InverseTransformDirection(cachedTransform.up)).eulerAngles.z, overrideAlpha) + flipCompensation;
-						//					if (flip) {
-						//                        
-						//						if ((!flipX && bone.flipX)) {
-						//							angle -= flipCompensation;
-						//						}
-						//
-						//						//TODO fix this...
-						//						if (angle >= 360)
-						//							angle -= 360;
-						//						else if (angle <= -360)
-						//							angle += 360;
-						//					}
+						float angle = Mathf.LerpAngle(bone.Rotation, Quaternion.LookRotation(Vector3.forward, parentReference.InverseTransformDirection(cachedTransform.up)).eulerAngles.z, overrideAlpha);
 						bone.Rotation = angle;
 						bone.AppliedRotation = angle;
 					}
@@ -228,43 +164,13 @@ namespace Spine.Unity {
 					}
 
 					incompatibleTransformMode = BoneTransformModeIncompatible(bone);
-
-					// MITCH : remove flipX
-					//if (flip)
-					//	bone.flipX = flipX;
 				}
 
 				transformLerpComplete = true;
 			}
 		}
 
-		// MITCH : remove flipX
-		//	public void FlipX (bool state) {
-		//		if (state != flipX) {
-		//			flipX = state;
-		//			if (flipX && Mathf.Abs(transform.localRotation.eulerAngles.y) > 90) {
-		//				skeletonUtility.skeletonAnimation.LateUpdate();
-		//				return;
-		//			} else if (!flipX && Mathf.Abs(transform.localRotation.eulerAngles.y) < 90) {
-		//				skeletonUtility.skeletonAnimation.LateUpdate();
-		//				return;
-		//			}
-		//		}
-		//
-		//        
-		//		bone.FlipX = state;
-		//		transform.RotateAround(transform.position, skeletonUtility.transform.up, 180);
-		//		Vector3 euler = transform.localRotation.eulerAngles;
-		//		euler.x = 0;
-		//        
-		//		euler.y = bone.FlipX ? 180 : 0;
-		//        euler.y = 0;
-		//		transform.localRotation = Quaternion.Euler(euler);
-		//	}
-
 		public static bool BoneTransformModeIncompatible (Bone bone) {
-//			var transformMode = !bone.data.transformMode;
-//			return (transformMode == TransformMode.NoScale || transformMode == TransformMode.NoScaleOrReflection || transformMode == TransformMode.OnlyTranslation);
 			return !bone.data.transformMode.InheritsScale();
 		}
 

@@ -14,24 +14,8 @@ namespace Spine.Unity {
 	[RequireComponent(typeof(ISkeletonAnimation))]
 	[ExecuteInEditMode]
 	public class SkeletonUtility : MonoBehaviour {
-
-		public static T GetInParent<T> (Transform origin) where T : Component {
-			#if UNITY_4_3
-			Transform parent = origin.parent;
-			while(parent.GetComponent<T>() == null){
-			parent = parent.parent;
-			if(parent == null)
-			return default(T);
-			}
-
-			return parent.GetComponent<T>();
-			#else
-			return origin.GetComponentInParent<T>();
-			#endif
-		}
-
+	
 		public static PolygonCollider2D AddBoundingBox (Skeleton skeleton, string skinName, string slotName, string attachmentName, Transform parent, bool isTrigger = true) {
-			// List<Attachment> attachments = new List<Attachment>();
 			Skin skin;
 
 			if (skinName == "")
@@ -66,9 +50,7 @@ namespace Spine.Unity {
 				}
 
 				collider.SetPath(0, verts);
-
 				return collider;
-
 			}
 
 			return null;
@@ -92,7 +74,6 @@ namespace Spine.Unity {
 			}
 
 			collider.SetPath(0, verts);
-
 			return collider;
 		}
 
@@ -101,7 +82,6 @@ namespace Spine.Unity {
 			int floatCount = floats.Length;
 
 			Bounds bounds = new Bounds();
-
 			bounds.center = new Vector3(floats[0], floats[1], 0);
 			for (int i = 2; i < floatCount; i += 2) {
 				bounds.Encapsulate(new Vector3(floats[i], floats[i + 1], 0));
@@ -114,9 +94,7 @@ namespace Spine.Unity {
 		}
 
 		public delegate void SkeletonUtilityDelegate ();
-
 		public event SkeletonUtilityDelegate OnReset;
-
 		public Transform boneRoot;
 
 		void Update () {
@@ -233,27 +211,20 @@ namespace Spine.Unity {
 				for (int i = 0, n = utilityBones.Count; i < n; i++) {
 					var b = utilityBones[i];
 					if (b.bone == null) return;
-					if (b.mode == SkeletonUtilityBone.Mode.Override)
-						hasTransformBones = true;
-
-					if (constraintTargetNames.Contains(b.bone.Data.Name))
-						hasUtilityConstraints = true;
+					hasTransformBones |= b.mode == SkeletonUtilityBone.Mode.Override;
+					hasUtilityConstraints |= constraintTargetNames.Contains(b.bone.Data.Name);
 				}
 
-				if (utilityConstraints.Count > 0)
-					hasUtilityConstraints = true;
+				hasUtilityConstraints |= utilityConstraints.Count > 0;
 
 				if (skeletonAnimation != null) {
 					skeletonAnimation.UpdateWorld -= UpdateWorld;
 					skeletonAnimation.UpdateComplete -= UpdateComplete;
-
-					if (hasTransformBones || hasUtilityConstraints) {
+					if (hasTransformBones || hasUtilityConstraints)
 						skeletonAnimation.UpdateWorld += UpdateWorld;
-					}
-
-					if (hasUtilityConstraints) {
+					
+					if (hasUtilityConstraints)
 						skeletonAnimation.UpdateComplete += UpdateComplete;
-					}
 				}
 
 				needToReprocessBones = false;
@@ -261,7 +232,6 @@ namespace Spine.Unity {
 				utilityBones.Clear();
 				utilityConstraints.Clear();
 			}
-
 		}
 
 		void UpdateLocal (ISkeletonAnimation anim) {
@@ -314,21 +284,15 @@ namespace Spine.Unity {
 			Skeleton skeleton = this.skeletonRenderer.skeleton;
 
 			GameObject go = SpawnBone(skeleton.RootBone, boneRoot, mode, pos, rot, sca);
-
 			CollectBones();
-
 			return go;
 		}
 
 		public GameObject SpawnHierarchy (SkeletonUtilityBone.Mode mode, bool pos, bool rot, bool sca) {
 			GetBoneRoot();
-
 			Skeleton skeleton = this.skeletonRenderer.skeleton;
-
 			GameObject go = SpawnBoneRecursively(skeleton.RootBone, boneRoot, mode, pos, rot, sca);
-
 			CollectBones();
-
 			return go;
 		}
 

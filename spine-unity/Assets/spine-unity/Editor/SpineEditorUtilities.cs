@@ -101,13 +101,8 @@ namespace Spine.Unity.Editor {
 			public static Material BoneMaterial {
 				get {
 					if (_boneMaterial == null) {
-						#if UNITY_4_3
-						_boneMaterial = new Material(Shader.Find("Particles/Alpha Blended"));
-						_boneMaterial.SetColor("_TintColor", new Color(0.4f, 0.4f, 0.4f, 0.25f));
-						#else
 						_boneMaterial = new Material(Shader.Find("Hidden/Spine/Bones"));
 						_boneMaterial.SetColor("_Color", new Color(0.4f, 0.4f, 0.4f, 0.25f));
-						#endif
 					}
 					return _boneMaterial;
 				}

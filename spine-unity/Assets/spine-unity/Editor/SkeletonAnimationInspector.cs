@@ -35,9 +35,11 @@ using Spine;
 namespace Spine.Unity.Editor {
 	
 	[CustomEditor(typeof(SkeletonAnimation))]
+	[CanEditMultipleObjects]
 	public class SkeletonAnimationInspector : SkeletonRendererInspector {
 		protected SerializedProperty animationName, loop, timeScale, autoReset;
 		protected bool wasAnimationNameChanged;
+		protected bool requireRepaint;
 
 		protected override void OnEnable () {
 			base.OnEnable();
