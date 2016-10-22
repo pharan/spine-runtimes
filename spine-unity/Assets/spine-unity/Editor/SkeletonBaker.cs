@@ -336,12 +336,13 @@ namespace Spine.Unity.Editor {
 
 					boneTransform.parent = parentTransform;
 					boneTransform.localPosition = new Vector3(boneData.X, boneData.Y, 0);
-					if (boneData.InheritRotation)
+					var tm = boneData.TransformMode;
+					if (tm.InheritsRotation())
 						boneTransform.localRotation = Quaternion.Euler(0, 0, boneData.Rotation);
 					else
 						boneTransform.rotation = Quaternion.Euler(0, 0, boneData.Rotation);
 
-					if (boneData.InheritScale)
+					if (tm.InheritsScale())
 						boneTransform.localScale = new Vector3(boneData.ScaleX, boneData.ScaleY, 1);
 				}
 
@@ -792,7 +793,7 @@ namespace Spine.Unity.Editor {
 			}
 
 			foreach (Bone b in skeleton.Bones) {
-				if (b.Data.InheritRotation == false) {
+				if (!b.Data.TransformMode.InheritsRotation()) {
 					int index = skeleton.FindBoneIndex(b.Data.Name);
 
 					if (ignoreRotateTimelineIndexes.Contains(index) == false) {
@@ -961,7 +962,7 @@ namespace Spine.Unity.Editor {
 
 		static void BakeBone (Bone bone, Spine.Animation animation, AnimationClip clip) {
 			Skeleton skeleton = bone.Skeleton;
-			bool inheritRotation = bone.Data.InheritRotation;
+			bool inheritRotation = bone.Data.TransformMode.InheritsRotation();
 
 			skeleton.SetToSetupPose();
 			animation.Apply(skeleton, 0, 0, true, null);

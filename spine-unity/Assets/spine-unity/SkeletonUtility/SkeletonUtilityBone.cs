@@ -56,9 +56,9 @@ namespace Spine.Unity {
 		//		get { return nonUniformScaleWarning; }
 		//	}
 
-		private bool disableInheritScaleWarning;
-		public bool DisableInheritScaleWarning {
-			get { return disableInheritScaleWarning; }
+		private bool incompatibleTransformMode;
+		public bool IncompatibleTransformMode {
+			get { return incompatibleTransformMode; }
 		}
 
 		public void Reset () {
@@ -103,7 +103,7 @@ namespace Spine.Unity {
 			Spine.Skeleton skeleton = skeletonUtility.skeletonRenderer.skeleton;
 
 			if (bone == null) {
-				if (boneName == null || boneName.Length == 0)
+				if (string.IsNullOrEmpty(boneName))
 					return;
 
 				bone = skeleton.FindBone(boneName);
@@ -131,7 +131,7 @@ namespace Spine.Unity {
 					cachedTransform.localPosition = new Vector3(bone.x, bone.y, 0);
 
 				if (rotation) {
-					if (bone.Data.InheritRotation) {
+					if (!bone.data.transformMode.InheritsRotation()) {
 						// MITCH : remove flipX
 						//if (bone.FlipX) {
 						//	cachedTransform.localRotation = Quaternion.Euler(0, 180, bone.rotationIK - flipCompensation);
@@ -145,10 +145,8 @@ namespace Spine.Unity {
 				}
 
 				if (scale) {
-					cachedTransform.localScale = new Vector3(bone.scaleX, bone.scaleY, bone.WorldSignX);
-					// MITCH : nonuniform scale
-					//nonUniformScaleWarning = (bone.scaleX != bone.scaleY);
-					disableInheritScaleWarning = !bone.data.inheritScale;
+					cachedTransform.localScale = new Vector3(bone.scaleX, bone.scaleY, 1f);//, bone.WorldSignX);
+					incompatibleTransformMode = BoneTransformModeIncompatible(bone);
 				}
 
 			} else if (mode == Mode.Override) {
@@ -227,11 +225,9 @@ namespace Spine.Unity {
 					if (scale) {
 						bone.scaleX = Mathf.Lerp(bone.scaleX, cachedTransform.localScale.x, overrideAlpha);
 						bone.scaleY = Mathf.Lerp(bone.scaleY, cachedTransform.localScale.y, overrideAlpha);
-						// MITCH : nonuniform scale
-						//nonUniformScaleWarning = (bone.scaleX != bone.scaleY);
 					}
 
-					disableInheritScaleWarning = !bone.data.inheritScale;
+					incompatibleTransformMode = BoneTransformModeIncompatible(bone);
 
 					// MITCH : remove flipX
 					//if (flip)
@@ -266,19 +262,19 @@ namespace Spine.Unity {
 		//		transform.localRotation = Quaternion.Euler(euler);
 		//	}
 
+		public static bool BoneTransformModeIncompatible (Bone bone) {
+//			var transformMode = !bone.data.transformMode;
+//			return (transformMode == TransformMode.NoScale || transformMode == TransformMode.NoScaleOrReflection || transformMode == TransformMode.OnlyTranslation);
+			return !bone.data.transformMode.InheritsScale();
+		}
+
 		public void AddBoundingBox (string skinName, string slotName, string attachmentName) {
 			SkeletonUtility.AddBoundingBox(bone.skeleton, skinName, slotName, attachmentName, transform);
 		}
 
-
 		#if UNITY_EDITOR
 		void OnDrawGizmos () {
-			// MITCH : nonuniform scale
-			//		if (NonUniformScaleWarning) {
-			//			Gizmos.DrawIcon(transform.position + new Vector3(0, 0.128f, 0), "icon-warning");
-			//		}
-
-			if (DisableInheritScaleWarning)
+			if (IncompatibleTransformMode)
 				Gizmos.DrawIcon(transform.position + new Vector3(0, 0.128f, 0), "icon-warning");		
 		}
 		#endif

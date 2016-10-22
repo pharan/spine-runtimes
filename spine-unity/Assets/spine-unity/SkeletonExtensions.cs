@@ -106,6 +106,18 @@ namespace Spine.Unity {
 
 namespace Spine {
 	public static class SkeletonExtensions {
+		#region Transform Modes
+		public static bool InheritsRotation (this TransformMode mode) {
+			const int RotationBit = 0;
+			return ((int)mode & (1U << RotationBit)) == 0;
+		}
+
+		public static bool InheritsScale (this TransformMode mode) {
+			const int ScaleBit = 1;
+			return ((int)mode & (1U << ScaleBit)) == 0;
+		}
+		#endregion
+
 		#region Posing
 		public static void Apply (this Spine.Animation animation, Skeleton skeleton, float lastTime, float time, bool loop, ExposedList<Event> events) {
 			animation.Apply(skeleton, lastTime, time, loop, events, 1f, false, false);

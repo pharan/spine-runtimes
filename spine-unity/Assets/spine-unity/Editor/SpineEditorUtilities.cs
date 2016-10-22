@@ -1120,7 +1120,7 @@ namespace Spine.Unity.Editor {
 		#endregion
 
 		#region Checking Methods
-		static int[][] compatibleVersions = { new[] {3, 4, 0}, new[] {3, 3, 0} };
+		static int[][] compatibleVersions = { new[] {3, 5, 0} };
 		static bool isFixVersionRequired = false;
 
 		static bool CheckForValidSkeletonData (string skeletonJSONPath) {
