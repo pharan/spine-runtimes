@@ -50,7 +50,7 @@ namespace Spine {
 			this.duration = duration;
 		}
 
-		/// <summary>Poses the skeleton at the specified time for this animation.</summary>
+		/// <summary>Applies all the animation's timelines to the specified skeleton.</summary>
 		/// <param name="skeleton">The skeleton to be posed.</param>
 		/// <param name="lastTime">The last time the animation was applied.</param>
 		/// <param name="time">The point in time in the animation to apply to the skeleton.</param>
@@ -59,6 +59,7 @@ namespace Spine {
 		/// <param name="alpha">The percentage between this animation's pose and the current pose.</param>
 		/// <param name="setupPose">If true, the animation is mixed with the setup pose, else it is mixed with the current pose. Passing true when alpha is 1 is slightly more efficient.</param>
 		/// <param name="mixingOut">True when mixing over time toward the setup or current pose, false when mixing toward the keyed pose. Irrelevant when alpha is 1.</param>
+		/// <seealso cref="Timeline.Apply(Skeleton, float, float, ExposedList, float, bool, bool)"/>
 		public void Apply (Skeleton skeleton, float lastTime, float time, bool loop, ExposedList<Event> events, float alpha, bool setupPose, bool mixingOut) {
 			if (skeleton == null) throw new ArgumentNullException("skeleton", "skeleton cannot be null.");
 
@@ -104,7 +105,7 @@ namespace Spine {
 			}
 		}
 
-		internal static int linearSearch (float[] values, float target, int step) {
+		internal static int LinearSearch (float[] values, float target, int step) {
 			for (int i = 0, last = values.Length - step; i <= last; i += step)
 				if (values[i] > target) return i;
 			return -1;
@@ -115,7 +116,8 @@ namespace Spine {
 		/// <summary>Sets the value(s) for the specified time.</summary>
 		/// <param name="events">Any triggered events are added. May be null.</param>
 		/// <param name="setupPose">If true, the timeline is mixed with the setup pose, else it is mixed with the current pose. Passing true when alpha is 1 is slightly more efficient.</param>
-		/// <param name="mixingOut">True when mixing over time toward the setup or current pose, false when mixing toward the keyed pose. Irrelevant when alpha is 1.</param>
+		/// <param name="mixingOut">True when mixing over time toward the setup or current pose, false when mixing toward the keyed pose.
+		/// Used for timelines with instant transitions, eg draw order, attachment visibility, scale sign.</param>
 		void Apply (Skeleton skeleton, float lastTime, float time, ExposedList<Event> events, float alpha, bool setupPose, bool mixingOut);
 		int PropertyId { get; }
 	}
@@ -250,7 +252,7 @@ namespace Spine {
 					bone.rotation = bone.data.rotation + frames[frames.Length + PREV_ROTATION] * alpha;
 				} else {
 					r = bone.data.rotation + frames[frames.Length + PREV_ROTATION] - bone.rotation;
-					r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360;
+					r -= (16384 - (int)(16384.499999999996 - r / 360)) * 360; // Wrap within -180 and 180.
 					bone.rotation += r * alpha;
 				}
 				return;
@@ -310,32 +312,28 @@ namespace Spine {
 
 			Bone bone = skeleton.bones.Items[boneIndex];
 
+			float x, y;
 			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				if (setupPose) {
-					bone.x = bone.data.x + frames[frames.Length + PREV_X] * alpha;
-					bone.y = bone.data.y + frames[frames.Length + PREV_Y] * alpha;
-				} else {
-					bone.x += (bone.data.x + frames[frames.Length + PREV_X] - bone.x) * alpha;
-					bone.y += (bone.data.y + frames[frames.Length + PREV_Y] - bone.y) * alpha;
-				}
+				x = frames[frames.Length + PREV_X];
+				y = frames[frames.Length + PREV_Y];
 			} else {
 				// Interpolate between the previous frame and the current frame.
 				int frame = Animation.BinarySearch(frames, time, ENTRIES);
-				float prevX = frames[frame + PREV_X];
-				float prevY = frames[frame + PREV_Y];
+				x = frames[frame + PREV_X];
+				y = frames[frame + PREV_Y];
 				float frameTime = frames[frame];
 				float percent = GetCurvePercent(frame / ENTRIES - 1,
 					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
 
-				float x = prevX + (frames[frame + X] - prevX) * percent;
-				float y = prevY + (frames[frame + Y] - prevY) * percent;
-				if (setupPose) {
-					bone.x = bone.data.x + x * alpha;
-					bone.y = bone.data.y + y * alpha;
-				} else {
-					bone.x += (bone.data.x + x - bone.x) * alpha;
-					bone.y += (bone.data.y + y - bone.y) * alpha;
-				}
+				x += (frames[frame + X] - x) * percent;
+				y += (frames[frame + Y] - y) * percent;
+			}
+			if (setupPose) {
+				bone.x = bone.data.x + x * alpha;
+				bone.y = bone.data.y + y * alpha;
+			} else {
+				bone.x += (bone.data.x + x - bone.x) * alpha;
+				bone.y += (bone.data.y + y - bone.y) * alpha;
 			}
 		}
 	}
@@ -362,14 +360,14 @@ namespace Spine {
 			} else {
 				// Interpolate between the previous frame and the current frame.
 				int frame = Animation.BinarySearch(frames, time, ENTRIES);
-				float prevX = frames[frame + PREV_X];
-				float prevY = frames[frame + PREV_Y];
+				x = frames[frame + PREV_X];
+				y = frames[frame + PREV_Y];
 				float frameTime = frames[frame];
 				float percent = GetCurvePercent(frame / ENTRIES - 1,
 					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
 
-				x = (prevX + (frames[frame + X] - prevX) * percent) * bone.data.scaleX;
-				y = (prevY + (frames[frame + Y] - prevY) * percent) * bone.data.scaleY;
+				x = (x + (frames[frame + X] - x) * percent) * bone.data.scaleX;
+				y = (x + (frames[frame + Y] - y) * percent) * bone.data.scaleY;
 			}
 			if (alpha == 1) {
 				bone.scaleX = x;
@@ -411,26 +409,22 @@ namespace Spine {
 			if (time < frames[0]) return; // Time is before first frame.
 
 			Bone bone = skeleton.bones.Items[boneIndex];
+			float x, y;
 			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				if (setupPose) {
-					bone.shearX = bone.data.shearX + frames[frames.Length + PREV_X] * alpha;
-					bone.shearY = bone.data.shearY + frames[frames.Length + PREV_Y] * alpha;
-				} else {
-					bone.shearX += (bone.data.shearX + frames[frames.Length + PREV_X] - bone.shearX) * alpha;
-					bone.shearY += (bone.data.shearY + frames[frames.Length + PREV_Y] - bone.shearY) * alpha;
-				}
-				return;
+				x = frames[frames.Length + PREV_X];
+				y = frames[frames.Length + PREV_Y];
+			} else {
+				// Interpolate between the previous frame and the current frame.
+				int frame = Animation.BinarySearch(frames, time, ENTRIES);
+				x = frames[frame + PREV_X];
+				y = frames[frame + PREV_Y];
+				float frameTime = frames[frame];
+				float percent = GetCurvePercent(frame / ENTRIES - 1,
+					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
+
+				x = x + (frames[frame + X] - x) * percent;
+				y = y + (frames[frame + Y] - y) * percent;
 			}
-
-			// Interpolate between the previous frame and the current frame.
-			int frame = Animation.BinarySearch(frames, time, ENTRIES);
-			float prevX = frames[frame + PREV_X];
-			float prevY = frames[frame + PREV_Y];
-			float frameTime = frames[frame];
-			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
-
-			float x = prevX + (frames[frame + X] - prevX) * percent;
-			float y = prevY + (frames[frame + Y] - prevY) * percent;
 			if (setupPose) {
 				bone.shearX = bone.data.shearX + x * alpha;
 				bone.shearY = bone.data.shearY + y * alpha;
@@ -602,7 +596,6 @@ namespace Spine {
 		}
 
 		override public void Apply (Skeleton skeleton, float lastTime, float time, ExposedList<Event> firedEvents, float alpha, bool setupPose, bool mixingOut) {
-			// TODO: Port new AnimationState
 			Slot slot = skeleton.slots.Items[slotIndex];
 			VertexAttachment slotAttachment = slot.attachment as VertexAttachment;
 			if (slotAttachment == null || !slotAttachment.ApplyDeform(attachment)) return;
@@ -622,13 +615,28 @@ namespace Spine {
 
 			if (time >= frames[frames.Length - 1]) { // Time is after last frame.
 				float[] lastVertices = frameVertices[frames.Length - 1];
-				if (alpha < 1) {
-					for (int i = 0; i < vertexCount; i++) {
-						float vertex = vertices[i];
-						vertices[i] = vertex + (lastVertices[i] - vertex) * alpha;
-					}
-				} else
+				if (alpha == 1) {
+					// Vertex positions or deform offsets, no alpha.
 					Array.Copy(lastVertices, 0, vertices, 0, vertexCount);
+				} else if (setupPose) {
+					VertexAttachment vertexAttachment = slotAttachment;
+					if (vertexAttachment.bones == null) {
+						// Unweighted vertex positions, with alpha.
+						float[] setupVertices = vertexAttachment.vertices;
+						for (int i = 0; i < vertexCount; i++) {
+							float setup = setupVertices[i];
+							vertices[i] = setup + (lastVertices[i] - setup) * alpha;
+						}
+					} else {
+						// Weighted deform offsets, with alpha.
+						for (int i = 0; i < vertexCount; i++)
+							vertices[i] = lastVertices[i] * alpha;
+					}
+				} else {
+					// Vertex positions or deform offsets, with alpha.
+					for (int i = 0; i < vertexCount; i++)
+						vertices[i] += (lastVertices[i] - vertices[i]) * alpha;
+				}
 				return;
 			}
 
@@ -645,29 +653,27 @@ namespace Spine {
 					float prev = prevVertices[i];
 					vertices[i] = prev + (nextVertices[i] - prev) * percent;
 				}
-			} else {
-				if (setupPose) {
-					VertexAttachment vertexAttachment = slotAttachment;
-					if (vertexAttachment.bones == null) {
-						// Unweighted vertex positions, with alpha.
-						float[] setupVertices = vertexAttachment.vertices;
-						for (int i = 0; i < vertexCount; i++) {
-							float prev = prevVertices[i], setup = setupVertices[i];
-							vertices[i] = setup + (prev + (nextVertices[i] - prev) * percent - setup) * alpha;
-						}
-					} else {
-						// Weighted deform offsets, with alpha.
-						for (int i = 0; i < vertexCount; i++) {
-							float prev = prevVertices[i];
-							vertices[i] = (prev + (nextVertices[i] - prev) * percent) * alpha;
-						}
+			} else if (setupPose) {
+				VertexAttachment vertexAttachment = (VertexAttachment)slotAttachment;
+				if (vertexAttachment.bones == null) {
+					// Unweighted vertex positions, with alpha.
+					var setupVertices = vertexAttachment.vertices;
+					for (int i = 0; i < vertexCount; i++) {
+						float prev = prevVertices[i], setup = setupVertices[i];
+						vertices[i] = setup + (prev + (nextVertices[i] - prev) * percent - setup) * alpha;
 					}
 				} else {
-					// Additive.
+					// Weighted deform offsets, with alpha.
 					for (int i = 0; i < vertexCount; i++) {
 						float prev = prevVertices[i];
-						vertices[i] += (prev + (nextVertices[i] - prev) * percent - vertices[i]) * alpha;
+						vertices[i] = (prev + (nextVertices[i] - prev) * percent) * alpha;
 					}
+				}
+			} else {
+				// Vertex positions or deform offsets, with alpha.
+				for (int i = 0; i < vertexCount; i++) {
+					float prev = prevVertices[i];
+					vertices[i] += (prev + (nextVertices[i] - prev) * percent - vertices[i]) * alpha;
 				}
 			}
 		}
@@ -812,13 +818,17 @@ namespace Spine {
 			float[] frames = this.frames;
 			if (time < frames[0]) return; // Time is before first frame.
 
-			// BOZO - Finish timelines handling setupPose and mixingOut from here down.
-
 			IkConstraint constraint = skeleton.ikConstraints.Items[ikConstraintIndex];
 
 			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				constraint.mix += (frames[frames.Length + PREV_MIX] - constraint.mix) * alpha;
-				constraint.bendDirection = (int)frames[frames.Length + PREV_BEND_DIRECTION];
+				if (setupPose) {
+					constraint.mix = constraint.data.mix + (frames[frames.Length + PREV_MIX] - constraint.data.mix) * alpha;
+					constraint.bendDirection = mixingOut ? constraint.data.bendDirection
+						: (int)frames[frames.Length + PREV_BEND_DIRECTION];
+				} else {
+					constraint.mix += (frames[frames.Length + PREV_MIX] - constraint.mix) * alpha;
+					if (!mixingOut) constraint.bendDirection = (int)frames[frames.Length + PREV_BEND_DIRECTION];
+				}
 				return;
 			}
 
@@ -828,8 +838,13 @@ namespace Spine {
 			float frameTime = frames[frame];
 			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
 
-			constraint.mix += (mix + (frames[frame + MIX] - mix) * percent - constraint.mix) * alpha;
-			constraint.bendDirection = (int)frames[frame + PREV_BEND_DIRECTION];
+			if (setupPose) {
+				constraint.mix = constraint.data.mix + (mix + (frames[frame + MIX] - mix) * percent - constraint.data.mix) * alpha;
+				constraint.bendDirection = mixingOut ? constraint.data.bendDirection : (int)frames[frame + PREV_BEND_DIRECTION];
+			} else {
+				constraint.mix += (mix + (frames[frame + MIX] - mix) * percent - constraint.mix) * alpha;
+				if (!mixingOut) constraint.bendDirection = (int)frames[frame + PREV_BEND_DIRECTION];
+			}
 		}
 	}
 
@@ -868,29 +883,41 @@ namespace Spine {
 
 			TransformConstraint constraint = skeleton.transformConstraints.Items[transformConstraintIndex];
 
+			float rotate, translate, scale, shear;
 			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
 				int i = frames.Length;
-				constraint.rotateMix += (frames[i + PREV_ROTATE] - constraint.rotateMix) * alpha;
-				constraint.translateMix += (frames[i + PREV_TRANSLATE] - constraint.translateMix) * alpha;
-				constraint.scaleMix += (frames[i + PREV_SCALE] - constraint.scaleMix) * alpha;
-				constraint.shearMix += (frames[i + PREV_SHEAR] - constraint.shearMix) * alpha;
-				return;
+				rotate = frames[i + PREV_ROTATE];
+				translate = frames[i + PREV_TRANSLATE];
+				scale = frames[i + PREV_SCALE];
+				shear = frames[i + PREV_SHEAR];
+			} else {
+				// Interpolate between the previous frame and the current frame.
+				int frame = Animation.BinarySearch(frames, time, ENTRIES);
+				rotate = frames[frame + PREV_ROTATE];
+				translate = frames[frame + PREV_TRANSLATE];
+				scale = frames[frame + PREV_SCALE];
+				shear = frames[frame + PREV_SHEAR];
+				float frameTime = frames[frame];
+				float percent = GetCurvePercent(frame / ENTRIES - 1,
+					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
+
+				rotate += (frames[frame + ROTATE] - rotate) * percent;
+				translate += (frames[frame + TRANSLATE] - translate) * percent;
+				scale += (frames[frame + SCALE] - scale) * percent;
+				shear += (frames[frame + SHEAR] - shear) * percent;
 			}
-
-			// Interpolate between the previous frame and the current frame.
-			int frame = Animation.BinarySearch(frames, time, ENTRIES);
-			float frameTime = frames[frame];
-			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
-
-			float rotate = frames[frame + PREV_ROTATE];
-			float translate = frames[frame + PREV_TRANSLATE];
-			float scale = frames[frame + PREV_SCALE];
-			float shear = frames[frame + PREV_SHEAR];
-			constraint.rotateMix += (rotate + (frames[frame + ROTATE] - rotate) * percent - constraint.rotateMix) * alpha;
-			constraint.translateMix += (translate + (frames[frame + TRANSLATE] - translate) * percent - constraint.translateMix)
-				* alpha;
-			constraint.scaleMix += (scale + (frames[frame + SCALE] - scale) * percent - constraint.scaleMix) * alpha;
-			constraint.shearMix += (shear + (frames[frame + SHEAR] - shear) * percent - constraint.shearMix) * alpha;
+			if (setupPose) {
+				TransformConstraintData data = constraint.data;
+				constraint.rotateMix = data.rotateMix + (rotate - data.rotateMix) * alpha;
+				constraint.translateMix = data.translateMix + (translate - data.translateMix) * alpha;
+				constraint.scaleMix = data.scaleMix + (scale - data.scaleMix) * alpha;
+				constraint.shearMix = data.shearMix + (shear - data.shearMix) * alpha;
+			} else {
+				constraint.rotateMix += (rotate - constraint.rotateMix) * alpha;
+				constraint.translateMix += (translate - constraint.translateMix) * alpha;
+				constraint.scaleMix += (scale - constraint.scaleMix) * alpha;
+				constraint.shearMix += (shear - constraint.shearMix) * alpha;
+			}
 		}
 	}
 
@@ -927,19 +954,23 @@ namespace Spine {
 
 			PathConstraint constraint = skeleton.pathConstraints.Items[pathConstraintIndex];
 
-			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				int i = frames.Length;
-				constraint.position += (frames[i + PREV_VALUE] - constraint.position) * alpha;
-				return;
+			float position;
+			if (time >= frames[frames.Length - ENTRIES]) // Time is after last frame.
+				position = frames[frames.Length + PREV_VALUE];
+			else {
+				// Interpolate between the previous frame and the current frame.
+				int frame = Animation.BinarySearch(frames, time, ENTRIES);
+				position = frames[frame + PREV_VALUE];
+				float frameTime = frames[frame];
+				float percent = GetCurvePercent(frame / ENTRIES - 1,
+					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
+
+				position += (frames[frame + VALUE] - position) * percent;
 			}
-
-			// Interpolate between the previous frame and the current frame.
-			int frame = Animation.BinarySearch(frames, time, ENTRIES);
-			float position = frames[frame + PREV_VALUE];
-			float frameTime = frames[frame];
-			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
-
-			constraint.position += (position + (frames[frame + VALUE] - position) * percent - constraint.position) * alpha;
+			if (setupPose)
+				constraint.position = constraint.data.position + (position - constraint.data.position) * alpha;
+			else
+				constraint.position += (position - constraint.position) * alpha;
 		}
 	}
 
@@ -958,19 +989,24 @@ namespace Spine {
 
 			PathConstraint constraint = skeleton.pathConstraints.Items[pathConstraintIndex];
 
-			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				int i = frames.Length;
-				constraint.spacing += (frames[i + PREV_VALUE] - constraint.spacing) * alpha;
-				return;
+			float spacing;
+			if (time >= frames[frames.Length - ENTRIES]) // Time is after last frame.
+				spacing = frames[frames.Length + PREV_VALUE];
+			else {
+				// Interpolate between the previous frame and the current frame.
+				int frame = Animation.BinarySearch(frames, time, ENTRIES);
+				spacing = frames[frame + PREV_VALUE];
+				float frameTime = frames[frame];
+				float percent = GetCurvePercent(frame / ENTRIES - 1,
+					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
+
+				spacing += (frames[frame + VALUE] - spacing) * percent;
 			}
 
-			// Interpolate between the previous frame and the current frame.
-			int frame = Animation.BinarySearch(frames, time, ENTRIES);
-			float spacing = frames[frame + PREV_VALUE];
-			float frameTime = frames[frame];
-			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
-
-			constraint.spacing += (spacing + (frames[frame + VALUE] - spacing) * percent - constraint.spacing) * alpha;
+			if (setupPose)
+				constraint.spacing = constraint.data.spacing + (spacing - constraint.data.spacing) * alpha;
+			else
+				constraint.spacing += (spacing - constraint.spacing) * alpha;
 		}
 	}
 
@@ -1008,23 +1044,30 @@ namespace Spine {
 
 			PathConstraint constraint = skeleton.pathConstraints.Items[pathConstraintIndex];
 
+			float rotate, translate;
 			if (time >= frames[frames.Length - ENTRIES]) { // Time is after last frame.
-				int i = frames.Length;
-				constraint.rotateMix += (frames[i + PREV_ROTATE] - constraint.rotateMix) * alpha;
-				constraint.translateMix += (frames[i + PREV_TRANSLATE] - constraint.translateMix) * alpha;
-				return;
+				rotate = frames[frames.Length + PREV_ROTATE];
+				translate = frames[frames.Length + PREV_TRANSLATE];
+			} else {
+				// Interpolate between the previous frame and the current frame.
+				int frame = Animation.BinarySearch(frames, time, ENTRIES);
+				rotate = frames[frame + PREV_ROTATE];
+				translate = frames[frame + PREV_TRANSLATE];
+				float frameTime = frames[frame];
+				float percent = GetCurvePercent(frame / ENTRIES - 1,
+					1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
+
+				rotate += (frames[frame + ROTATE] - rotate) * percent;
+				translate += (frames[frame + TRANSLATE] - translate) * percent;
 			}
 
-			// Interpolate between the previous frame and the current frame.
-			int frame = Animation.BinarySearch(frames, time, ENTRIES);
-			float rotate = frames[frame + PREV_ROTATE];
-			float translate = frames[frame + PREV_TRANSLATE];
-			float frameTime = frames[frame];
-			float percent = GetCurvePercent(frame / ENTRIES - 1, 1 - (time - frameTime) / (frames[frame + PREV_TIME] - frameTime));
-
-			constraint.rotateMix += (rotate + (frames[frame + ROTATE] - rotate) * percent - constraint.rotateMix) * alpha;
-			constraint.translateMix += (translate + (frames[frame + TRANSLATE] - translate) * percent - constraint.translateMix)
-				* alpha;
+			if (setupPose) {
+				constraint.rotateMix = constraint.data.rotateMix + (rotate - constraint.data.rotateMix) * alpha;
+				constraint.translateMix = constraint.data.translateMix + (translate - constraint.data.translateMix) * alpha;
+			} else {
+				constraint.rotateMix += (rotate - constraint.rotateMix) * alpha;
+				constraint.translateMix += (translate - constraint.translateMix) * alpha;
+			}
 		}
 	}
 }
