@@ -829,6 +829,10 @@ namespace Spine {
 			}
 		}
 
+		enum EventType {
+			Start, Interrupt, End, Dispose, Complete, Event
+		}
+
 		public void Start (TrackEntry entry) {
 			eventQueueEntries.Add(new EventQueueEntry(EventType.Start, entry));
 			if (AnimationsChanged != null) AnimationsChanged();
@@ -902,9 +906,5 @@ namespace Spine {
 		public void Clear () {
 			eventQueueEntries.Clear();
 		}
-	}
-
-	enum EventType {
-		Start, Interrupt, End, Dispose, Complete, Event
 	}
 }
