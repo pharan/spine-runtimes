@@ -1,39 +1,37 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
+
 #pragma warning disable 0219
 
-/*****************************************************************************
- * Spine Editor Utilities created by Mitch Thompson
- * Full irrevocable rights and permissions granted to Esoteric Software
-*****************************************************************************/
+// Contributed by: Mitch Thompson
+
 #define SPINE_SKELETONANIMATOR
 using UnityEngine;
 using UnityEditor;
@@ -1152,10 +1150,14 @@ namespace Spine.Unity.Editor {
 				return false;
 			}
 
+			bool isSpineJson = root.ContainsKey("skeleton");
+
 			// Version warning
-			{
+			if (isSpineJson) {
 				var skeletonInfo = (Dictionary<string, object>)root["skeleton"];
-				string jsonVersion = (string)skeletonInfo["spine"];
+				object jv;
+				skeletonInfo.TryGetValue("spine", out jv);
+				string jsonVersion = jv as string;
 				if (!string.IsNullOrEmpty(jsonVersion)) {
 					string[] jsonVersionSplit = jsonVersion.Split('.');
 					bool match = false;
@@ -1165,7 +1167,7 @@ namespace Spine.Unity.Editor {
 
 						if (isFixVersionRequired)
 							secondaryMatch &= version[2] <= int.Parse(jsonVersionSplit[2]);
-						
+
 						if (primaryMatch && secondaryMatch) {
 							match = true;
 							break;
@@ -1176,13 +1178,12 @@ namespace Spine.Unity.Editor {
 						string runtimeVersion = compatibleVersions[0][0] + "." + compatibleVersions[0][1];
 						Debug.LogWarning(string.Format("Skeleton '{0}' (exported with Spine {1}) may be incompatible with your runtime version: spine-unity v{2}", asset.name, jsonVersion, runtimeVersion));
 					}
+				} else {
+					isSpineJson = false;
 				}
 			}
-
-
-			return root.ContainsKey("skeleton");
-
-
+				
+			return isSpineJson;
 		}
 		#endregion
 
@@ -1429,10 +1430,70 @@ namespace Spine.Unity.Editor {
 		}
 		#endregion
 
+		#region Handles
+		static public void DrawBone (Matrix4x4 transformMatrix) {
+			SpineEditorUtilities.Icons.BoneMaterial.SetPass(0);
+			Graphics.DrawMeshNow(SpineEditorUtilities.Icons.BoneMesh, transformMatrix);
+		}
+
+		static float[] pathVertexBuffer;
+		static public void DrawPath (Slot s, PathAttachment p, Transform t) {
+			int worldVerticesLength = p.WorldVerticesLength;
+
+			if (pathVertexBuffer == null || pathVertexBuffer.Length < worldVerticesLength)
+				pathVertexBuffer = new float[worldVerticesLength];
+			
+			float[] pv = pathVertexBuffer;
+			p.ComputeWorldVertices(s, pv);
+
+			var ocolor = Handles.color;
+			Handles.color = new Color(254f/255f, 127f/255f, 0); // Path orange
+
+			Matrix4x4 m = t.localToWorldMatrix;
+			const int step = 6;
+			int n = worldVerticesLength - step;
+			Vector3 p0, p1, p2, p3;
+			for (int i = 2; i < n; i += step) {
+				p0 = m.MultiplyPoint(new Vector3(pv[i], pv[i+1]));
+				p1 = m.MultiplyPoint(new Vector3(pv[i+2], pv[i+3]));
+				p2 = m.MultiplyPoint(new Vector3(pv[i+4], pv[i+5]));
+				p3 = m.MultiplyPoint(new Vector3(pv[i+6], pv[i+7]));
+				DrawCubicBezier(p0, p1, p2, p3);
+			}
+
+			n += step;
+			if (p.Closed) {
+				p0 = m.MultiplyPoint(new Vector3(pv[n - 4], pv[n - 3]));
+				p1 = m.MultiplyPoint(new Vector3(pv[n - 2], pv[n - 1]));
+				p2 = m.MultiplyPoint(new Vector3(pv[0], pv[1]));
+				p3 = m.MultiplyPoint(new Vector3(pv[2], pv[3]));
+				DrawCubicBezier(p0, p1, p2, p3);
+			}
+
+			const float endCapSize = 0.05f;
+			var q = Quaternion.identity;
+			Handles.DotCap(0, m.MultiplyPoint(new Vector3(pv[2], pv[3])), q, endCapSize);
+//			if (!p.Closed) Handles.DotCap(0, m.MultiplyPoint(new Vector3(pv[n - 4], pv[n - 3])), q, endCapSize);
+
+			Handles.color = ocolor;
+		}
+
+		static public void DrawCubicBezier (Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3) {
+			Handles.DrawBezier(p0, p3, p1, p2, Handles.color, Texture2D.whiteTexture, 2f);
+//			const float dotSize = 0.01f;
+//			Quaternion q = Quaternion.identity;
+//			Handles.DotCap(0, p0, q, dotSize);
+//			Handles.DotCap(0, p1, q, dotSize);
+//			Handles.DotCap(0, p2, q, dotSize);
+//			Handles.DotCap(0, p3, q, dotSize);
+//			Handles.DrawLine(p0, p1);
+//			Handles.DrawLine(p3, p2);
+		}
+		#endregion
+
 		public static string GetPathSafeRegionName (AtlasRegion region) {
 			return region.name.Replace("/", "_");
 		}
 	}
 
 }
-

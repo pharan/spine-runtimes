@@ -1,33 +1,33 @@
 /******************************************************************************
- * Spine Runtimes Software License
- * Version 2.3
- * 
- * Copyright (c) 2013-2015, Esoteric Software
+ * Spine Runtimes Software License v2.5
+ *
+ * Copyright (c) 2013-2016, Esoteric Software
  * All rights reserved.
- * 
- * You are granted a perpetual, non-exclusive, non-sublicensable and
- * non-transferable license to use, install, execute and perform the Spine
- * Runtimes Software (the "Software") and derivative works solely for personal
- * or internal use. Without the written permission of Esoteric Software (see
- * Section 2 of the Spine Software License Agreement), you may not (a) modify,
- * translate, adapt or otherwise create derivative works, improvements of the
- * Software or develop new applications using the Software or (b) remove,
- * delete, alter or obscure any trademarks or any copyright, trademark, patent
+ *
+ * You are granted a perpetual, non-exclusive, non-sublicensable, and
+ * non-transferable license to use, install, execute, and perform the Spine
+ * Runtimes software and derivative works solely for personal or internal
+ * use. Without the written permission of Esoteric Software (see Section 2 of
+ * the Spine Software License Agreement), you may not (a) modify, translate,
+ * adapt, or develop new applications using the Spine Runtimes or otherwise
+ * create derivative works or improvements of the Spine Runtimes or (b) remove,
+ * delete, alter, or obscure any trademarks or any copyright, trademark, patent,
  * or other intellectual property or proprietary rights notices on or in the
  * Software, including any copy thereof. Redistributions in binary or source
  * form must include this license and terms.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY ESOTERIC SOFTWARE "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
  * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
  * EVENT SHALL ESOTERIC SOFTWARE BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
  * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
- * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
- * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES, BUSINESS INTERRUPTION, OR LOSS OF
+ * USE, DATA, OR PROFITS) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER
+ * IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
+
 //#define BAKE_ALL_BUTTON
 //#define REGION_BAKING_MESH
 
@@ -46,6 +46,11 @@ namespace Spine.Unity.Editor {
 		private SerializedProperty atlasFile, materials;
 		private AtlasAsset atlasAsset;
 
+		static List<AtlasRegion> GetRegions (Atlas atlas) {
+			FieldInfo regionsField = typeof(Atlas).GetField("regions", BindingFlags.Instance | BindingFlags.NonPublic);
+			return (List<AtlasRegion>)regionsField.GetValue(atlas);
+		}
+
 		void OnEnable () {
 			SpineEditorUtilities.ConfirmInitialization();
 			atlasFile = serializedObject.FindProperty("atlasFile");
@@ -56,7 +61,7 @@ namespace Spine.Unity.Editor {
 			UpdateBakedList();
 			#endif
 		}
-			
+
 		#if REGION_BAKING_MESH
 		private List<bool> baked;
 		private List<GameObject> bakedObjects;
@@ -66,14 +71,10 @@ namespace Spine.Unity.Editor {
 			baked = new List<bool>();
 			bakedObjects = new List<GameObject>();
 			if (atlasFile.objectReferenceValue != null) {
-				Atlas atlas = asset.GetAtlas();
-				FieldInfo field = typeof(Atlas).GetField("regions", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.NonPublic);
-				List<AtlasRegion> regions = (List<AtlasRegion>)field.GetValue(atlas);
+				List<AtlasRegion> regions = this.Regions;
 				string atlasAssetPath = AssetDatabase.GetAssetPath(atlasAsset);
 				string atlasAssetDirPath = Path.GetDirectoryName(atlasAssetPath);
 				string bakedDirPath = Path.Combine(atlasAssetDirPath, atlasAsset.name);
-
-
 				for (int i = 0; i < regions.Count; i++) {
 					AtlasRegion region = regions[i];
 					string bakedPrefabPath = Path.Combine(bakedDirPath, SpineEditorUtilities.GetPathSafeRegionName(region) + ".prefab").Replace("\\", "/");
@@ -92,8 +93,7 @@ namespace Spine.Unity.Editor {
 			var spriteSheet = t.spritesheet;
 			var sprites = new List<SpriteMetaData>(spriteSheet);
 
-			FieldInfo field = typeof(Atlas).GetField("regions", BindingFlags.Instance | BindingFlags.NonPublic);
-			var regions = (List<AtlasRegion>)field.GetValue(atlas);
+			var regions = AtlasAssetInspector.GetRegions(atlas);
 			int textureHeight = texture.height;
 			char[] FilenameDelimiter = {'.'};
 			int updatedCount = 0;
@@ -168,20 +168,27 @@ namespace Spine.Unity.Editor {
 				}
 			}
 
+			EditorGUILayout.Space();
 			if (atlasFile.objectReferenceValue != null) {
-				if (GUILayout.Button(
-					new GUIContent(
-						"Apply Regions as Texture Sprite Slices",
-						"Adds Sprite slices to atlas texture(s). " +
-						"Updates existing slices if ones with matching names exist. \n\n" +
-						"If your atlas was exported with Premultiply Alpha, " +
-						"your SpriteRenderer should use the generated Spine _Material asset (or any Material with a PMA shader) instead of Sprites-Default.")
-					, GUILayout.Height(70f))) {
-					var atlas = atlasAsset.GetAtlas();
-					foreach (var m in atlasAsset.materials)
-						UpdateSpriteSlices(m.mainTexture, atlas);
+				using (new EditorGUILayout.HorizontalScope()) {
+					EditorGUILayout.Space();
+					if (GUILayout.Button(
+						new GUIContent(
+							"Apply Regions as Texture Sprite Slices",
+							SpineEditorUtilities.Icons.unityIcon,
+							"Adds Sprite slices to atlas texture(s). " +
+							"Updates existing slices if ones with matching names exist. \n\n" +
+							"If your atlas was exported with Premultiply Alpha, " +
+							"your SpriteRenderer should use the generated Spine _Material asset (or any Material with a PMA shader) instead of Sprites-Default.")
+						, GUILayout.Height(30f))) {
+						var atlas = atlasAsset.GetAtlas();
+						foreach (var m in atlasAsset.materials)
+							UpdateSpriteSlices(m.mainTexture, atlas);
+					}
+					EditorGUILayout.Space();
 				}
 			}
+			EditorGUILayout.Space();
 
 			#if REGION_BAKING_MESH
 			if (atlasFile.objectReferenceValue != null) {
@@ -288,6 +295,39 @@ namespace Spine.Unity.Editor {
 				}
 				#endif
 				
+			}
+			#else
+			if (atlasFile.objectReferenceValue != null) {
+				EditorGUILayout.LabelField("Atlas Regions", EditorStyles.boldLabel);
+
+				var regions = AtlasAssetInspector.GetRegions(atlasAsset.GetAtlas());
+				AtlasPage lastPage = null;
+				for (int i = 0; i < regions.Count; i++) {
+					if (lastPage != regions[i].page) {
+						if (lastPage != null) {
+							EditorGUILayout.Separator();
+							EditorGUILayout.Separator();
+						}
+						lastPage = regions[i].page;
+						Material mat = ((Material)lastPage.rendererObject);
+						if (mat != null) {
+							
+							GUILayout.BeginHorizontal();
+							{
+								EditorGUI.BeginDisabledGroup(true);
+								EditorGUILayout.ObjectField(mat, typeof(Material), false, GUILayout.Width(250));
+								EditorGUI.EndDisabledGroup();
+								EditorGUI.indentLevel++;
+							}
+							GUILayout.EndHorizontal();
+
+						} else {
+							EditorGUILayout.LabelField(new GUIContent("Page missing material!", SpineEditorUtilities.Icons.warning));
+						}
+					}
+					EditorGUILayout.LabelField(new GUIContent(regions[i].name, SpineEditorUtilities.Icons.image));
+				}
+				EditorGUI.indentLevel--;
 			}
 			#endif
 
