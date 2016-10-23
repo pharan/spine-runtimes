@@ -64,6 +64,7 @@ namespace Spine.Unity {
 		public float zSpacing;
 		public bool renderMeshes = true, immutableTriangles;
 		public bool pmaVertexColors = true;
+		public bool clearStateOnDisable = false;
 
 		#if SPINE_OPTIONAL_NORMALS
 		public bool calculateNormals;
@@ -157,6 +158,17 @@ namespace Spine.Unity {
 
 		public virtual void Awake () {
 			Initialize(false);
+		}
+
+		void OnDisable () {
+			if (clearStateOnDisable)
+				ClearState();
+		}
+
+		protected virtual void ClearState () {
+			meshFilter.sharedMesh = null;
+			currentInstructions.Clear();
+			skeleton.SetToSetupPose();
 		}
 
 		public virtual void Initialize (bool overwrite) {

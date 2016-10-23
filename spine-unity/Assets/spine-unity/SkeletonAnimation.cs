@@ -131,6 +131,11 @@ namespace Spine.Unity {
 		}
 		#endregion
 
+		protected override void ClearState () {
+			base.ClearState();
+			state.ClearTracks();
+		}
+
 		public override void Initialize (bool overwrite) {
 			if (valid && !overwrite)
 				return;

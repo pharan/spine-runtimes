@@ -35,12 +35,12 @@ using UnityEngine;
 
 namespace Spine.Unity.Editor {
 	public static class Menus {
-		[MenuItem("Assets/Create/Spine Atlas")]
+		[MenuItem("Assets/Create/Spine/Atlas Asset")]
 		static public void CreateAtlas () {
 			CreateAsset<AtlasAsset>("New Atlas");
 		}
 
-		[MenuItem("Assets/Create/Spine SkeletonData")]
+		[MenuItem("Assets/Create/Spine/SkeletonData Asset")]
 		static public void CreateSkeletonData () {
 			CreateAsset<SkeletonDataAsset>("New SkeletonData");
 		}

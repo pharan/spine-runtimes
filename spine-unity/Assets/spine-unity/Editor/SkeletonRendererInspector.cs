@@ -35,12 +35,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 namespace Spine.Unity.Editor {
-	
+	using Event = UnityEngine.Event;
+
 	[CustomEditor(typeof(SkeletonRenderer))]
 	[CanEditMultipleObjects]
 	public class SkeletonRendererInspector : UnityEditor.Editor {
 		protected static bool advancedFoldout;
-		protected SerializedProperty skeletonDataAsset, initialSkinName, normals, tangents, meshes, immutableTriangles, separatorSlotNames, frontFacing, zSpacing, pmaVertexColors;
+		protected SerializedProperty skeletonDataAsset, initialSkinName, normals, tangents, meshes, immutableTriangles, separatorSlotNames, frontFacing, zSpacing, pmaVertexColors, clearStateOnDisable;
 		protected SpineInspectorUtility.SerializedSortingProperties sortingProperties;
 		protected bool isInspectingPrefab;
 
@@ -64,18 +65,21 @@ namespace Spine.Unity.Editor {
 			isInspectingPrefab = (PrefabUtility.GetPrefabType(target) == PrefabType.Prefab);
 			
 			SpineEditorUtilities.ConfirmInitialization();
-			skeletonDataAsset = serializedObject.FindProperty("skeletonDataAsset");
-			initialSkinName = serializedObject.FindProperty("initialSkinName");
-			normals = serializedObject.FindProperty("calculateNormals");
-			tangents = serializedObject.FindProperty("calculateTangents");
-			meshes = serializedObject.FindProperty("renderMeshes");
-			immutableTriangles = serializedObject.FindProperty("immutableTriangles");
-			pmaVertexColors = serializedObject.FindProperty("pmaVertexColors");
-			separatorSlotNames = serializedObject.FindProperty("separatorSlotNames");
+			var so = this.serializedObject;
+			skeletonDataAsset = so.FindProperty("skeletonDataAsset");
+			initialSkinName = so.FindProperty("initialSkinName");
+			normals = so.FindProperty("calculateNormals");
+			tangents = so.FindProperty("calculateTangents");
+			meshes = so.FindProperty("renderMeshes");
+			immutableTriangles = so.FindProperty("immutableTriangles");
+			pmaVertexColors = so.FindProperty("pmaVertexColors");
+			clearStateOnDisable = so.FindProperty("clearStateOnDisable");
+
+			separatorSlotNames = so.FindProperty("separatorSlotNames");
 			separatorSlotNames.isExpanded = true;
 
-			frontFacing = serializedObject.FindProperty("frontFacing");
-			zSpacing = serializedObject.FindProperty("zSpacing");
+			frontFacing = so.FindProperty("frontFacing");
+			zSpacing = so.FindProperty("zSpacing");
 
 			SerializedObject rso = SpineInspectorUtility.GetRenderersSerializedObject(serializedObject);
 			sortingProperties = new SpineInspectorUtility.SerializedSortingProperties(rso);
@@ -124,8 +128,10 @@ namespace Spine.Unity.Editor {
 				foreach (var c in targets) {
 					var component = c as SkeletonRenderer;
 					if (!component.valid) {
-						component.Initialize(true);
-						component.LateUpdate();
+						if (Event.current.type == EventType.Layout) {
+							component.Initialize(true);
+							component.LateUpdate();
+						}
 						if (!component.valid)
 							continue;
 					}
@@ -144,9 +150,14 @@ namespace Spine.Unity.Editor {
 			} else {
 				var component = (SkeletonRenderer)target;
 
+				if (!component.valid && Event.current.type == EventType.Layout) {
+					component.Initialize(true);
+					component.LateUpdate();
+				}
+
 				using (new EditorGUILayout.HorizontalScope()) {
 					EditorGUILayout.PropertyField(skeletonDataAsset);
-					if (valid) {
+					if (component.valid) {
 						const string ReloadButtonLabel = "Reload";
 						float reloadWidth = GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20;
 						if (GUILayout.Button(ReloadButtonLabel, GUILayout.Width(reloadWidth))) {
@@ -162,13 +173,9 @@ namespace Spine.Unity.Editor {
 					}
 				}
 
-				if (!component.valid) {
-					component.Initialize(true);
-					component.LateUpdate();
-					if (!component.valid) {
-						EditorGUILayout.HelpBox("Skeleton Data Asset required", MessageType.Warning);
-						return;
-					}
+				if (component.skeletonDataAsset == null) {
+					EditorGUILayout.HelpBox("Skeleton Data Asset required", MessageType.Warning);
+					return;
 				}
 
 				#if NO_PREFAB_MESH
@@ -180,7 +187,7 @@ namespace Spine.Unity.Editor {
 				#endif
 
 				// Initial skin name.
-				if (valid) {
+				if (component.valid) {
 					string[] skins = new string[component.skeleton.Data.Skins.Count];
 					int skinIndex = 0;
 					for (int i = 0; i < skins.Length; i++) {
@@ -199,7 +206,7 @@ namespace Spine.Unity.Editor {
 			// Sorting Layers
 			SpineInspectorUtility.SortingPropertyFields(sortingProperties, applyModifiedProperties: true);
 
-			if (!valid) return;
+			if (!TargetIsValid) return;
 			
 			// More Render Options...
 			using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
@@ -224,6 +231,9 @@ namespace Spine.Unity.Editor {
 					EditorGUILayout.Space();
 					SpineInspectorUtility.PropertyFieldWideLabel(pmaVertexColors,
 						new GUIContent("PMA Vertex Colors", "Use this if you are using the default Spine/Skeleton shader or any premultiply-alpha shader."));
+
+					SpineInspectorUtility.PropertyFieldWideLabel(clearStateOnDisable,
+						new GUIContent("Clear State On Disable", "Use this if you are pooling or enabling/disabling your Spine GameObject."));
 
 					// Optional fields. May be disabled in SkeletonRenderer.
 					if (normals != null) SpineInspectorUtility.PropertyFieldWideLabel(normals, new GUIContent("Add Normals"));
@@ -271,7 +281,7 @@ namespace Spine.Unity.Editor {
 			bool multi = serializedObject.isEditingMultipleObjects;
 			DrawInspectorGUI(multi);
 			if (serializedObject.ApplyModifiedProperties() ||
-				(UnityEngine.Event.current.type == EventType.ValidateCommand && UnityEngine.Event.current.commandName == "UndoRedoPerformed")
+				(Event.current.type == EventType.ValidateCommand && Event.current.commandName == "UndoRedoPerformed")
 			) {
 				if (!Application.isPlaying) {
 					if (multi) {

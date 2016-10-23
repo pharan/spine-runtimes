@@ -138,32 +138,32 @@ namespace Spine.Unity.Editor {
 			EditorGUIUtility.PingObject(Selection.activeObject);
 		}
 
-		[MenuItem("Assets/Spine/Instantiate (UnityUI)", false, 20)]
-		static void InstantiateSkeletonGraphic () {
-			Object[] arr = Selection.objects;
-			foreach (Object o in arr) {
-				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
-				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
-
-				InstantiateSkeletonGraphic((SkeletonDataAsset)o, skinName);
-				SceneView.RepaintAll();
-			}
-		}
-
-		[MenuItem("Assets/Spine/Instantiate (UnityUI)", true, 20)]
-		static bool ValidateInstantiateSkeletonGraphic () {
-			Object[] arr = Selection.objects;
-
-			if (arr.Length == 0)
-				return false;
-
-			foreach (var selected in arr) {
-				if (selected.GetType() != typeof(SkeletonDataAsset))
-					return false;
-			}
-
-			return true;
-		}
+//		[MenuItem("Assets/Spine/Instantiate (UnityUI)", false, 20)]
+//		static void InstantiateSkeletonGraphic () {
+//			Object[] arr = Selection.objects;
+//			foreach (Object o in arr) {
+//				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
+//				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
+//
+//				InstantiateSkeletonGraphic((SkeletonDataAsset)o, skinName);
+//				SceneView.RepaintAll();
+//			}
+//		}
+//
+//		[MenuItem("Assets/Spine/Instantiate (UnityUI)", true, 20)]
+//		static bool ValidateInstantiateSkeletonGraphic () {
+//			Object[] arr = Selection.objects;
+//
+//			if (arr.Length == 0)
+//				return false;
+//
+//			foreach (var selected in arr) {
+//				if (selected.GetType() != typeof(SkeletonDataAsset))
+//					return false;
+//			}
+//
+//			return true;
+//		}
 
 		// SpineEditorUtilities.InstantiateDelegate. Used by drag and drop.
 		public static Component SpawnSkeletonGraphicFromDrop (SkeletonDataAsset data) {

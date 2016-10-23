@@ -43,6 +43,7 @@ using System.Reflection;
 using Spine;
 
 namespace Spine.Unity.Editor {
+	using EventType = UnityEngine.EventType;
 	
 	// Analysis disable once ConvertToStaticType
 	[InitializeOnLoad]
@@ -1188,32 +1189,32 @@ namespace Spine.Unity.Editor {
 		#endregion
 
 		#region SkeletonAnimation Menu
-		[MenuItem("Assets/Spine/Instantiate (SkeletonAnimation)", false, 10)]
-		static void InstantiateSkeletonAnimation () {
-			Object[] arr = Selection.objects;
-			foreach (Object o in arr) {
-				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
-				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
-
-				InstantiateSkeletonAnimation((SkeletonDataAsset)o, skinName, false);
-				SceneView.RepaintAll();
-			}
-		}
-
-		[MenuItem("Assets/Spine/Instantiate (SkeletonAnimation)", true, 10)]
-		static bool ValidateInstantiateSkeletonAnimation () {
-			Object[] arr = Selection.objects;
-
-			if (arr.Length == 0)
-				return false;
-
-			foreach (Object o in arr) {
-				if (o.GetType() != typeof(SkeletonDataAsset))
-					return false;
-			}
-
-			return true;
-		}
+//		[MenuItem("Assets/Spine/Instantiate (SkeletonAnimation)", false, 10)]
+//		static void InstantiateSkeletonAnimation () {
+//			Object[] arr = Selection.objects;
+//			foreach (Object o in arr) {
+//				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
+//				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
+//
+//				InstantiateSkeletonAnimation((SkeletonDataAsset)o, skinName, false);
+//				SceneView.RepaintAll();
+//			}
+//		}
+//
+//		[MenuItem("Assets/Spine/Instantiate (SkeletonAnimation)", true, 10)]
+//		static bool ValidateInstantiateSkeletonAnimation () {
+//			Object[] arr = Selection.objects;
+//
+//			if (arr.Length == 0)
+//				return false;
+//
+//			foreach (Object o in arr) {
+//				if (o.GetType() != typeof(SkeletonDataAsset))
+//					return false;
+//			}
+//
+//			return true;
+//		}
 
 		public static SkeletonAnimation InstantiateSkeletonAnimation (SkeletonDataAsset skeletonDataAsset, string skinName, bool destroyInvalid = true) {
 			var skeletonData = skeletonDataAsset.GetSkeletonData(true);
@@ -1287,33 +1288,6 @@ namespace Spine.Unity.Editor {
 				return;
 
 			SkeletonBaker.GenerateMecanimAnimationClips(skeletonDataAsset);
-		}
-
-		[MenuItem("Assets/Spine/Instantiate (Mecanim)", false, 100)]
-		static void InstantiateSkeletonAnimator () {
-			Object[] arr = Selection.objects;
-			foreach (Object o in arr) {
-				string guid = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(o));
-				string skinName = EditorPrefs.GetString(guid + "_lastSkin", "");
-
-				InstantiateSkeletonAnimator((SkeletonDataAsset)o, skinName);
-				SceneView.RepaintAll();
-			}
-		}
-
-		[MenuItem("Assets/Spine/Instantiate (Mecanim)", true, 100)]
-		static bool ValidateInstantiateSkeletonAnimator () {
-			Object[] arr = Selection.objects;
-
-			if (arr.Length == 0)
-				return false;
-
-			foreach (Object o in arr) {
-				if (o.GetType() != typeof(SkeletonDataAsset))
-					return false;
-			}
-
-			return true;
 		}
 
 		public static SkeletonAnimator InstantiateSkeletonAnimator (SkeletonDataAsset skeletonDataAsset, string skinName) {

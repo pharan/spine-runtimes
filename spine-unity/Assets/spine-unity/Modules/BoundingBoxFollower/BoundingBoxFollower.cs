@@ -28,6 +28,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
+#if UNITY_EDITOR
+#define SPINE_EDITOR_MESSAGES
+#endif
+
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -40,6 +44,7 @@ namespace Spine.Unity {
 		[SpineSlot(dataField: "skeletonRenderer", containsBoundingBoxes: true)]
 		public string slotName;
 		public bool isTrigger;
+		public bool clearStateOnDisable = true;
 		#endregion
 
 		Slot slot;
@@ -74,7 +79,21 @@ namespace Spine.Unity {
 		}
 
 		void OnDisable () {
+			if (clearStateOnDisable)
+				Clear();
+
 			skeletonRenderer.OnRebuild -= HandleRebuild;
+		}
+
+		void Clear () {
+			ClearColliders();
+
+			foreach (var col in colliderTable.Values)
+				col.enabled = false;
+
+			currentAttachment = null;
+			currentAttachmentName = null;
+			currentCollider = null;
 		}
 
 		void Start () {
@@ -109,10 +128,10 @@ namespace Spine.Unity {
 						var attachment = skin.GetAttachment(slotIndex, attachmentName);
 						var boundingBoxAttachment = attachment as BoundingBoxAttachment;
 
-#if UNITY_EDITOR
+						#if SPINE_EDITOR_MESSAGES
 						if (attachment != null && boundingBoxAttachment == null)
 							Debug.Log("BoundingBoxFollower tried to follow a slot that contains non-boundingbox attachments: " + slotName);
-#endif
+						#endif
 
 						if (boundingBoxAttachment != null) {
 							var bbCollider = SkeletonUtility.AddBoundingBoxAsComponent(boundingBoxAttachment, gameObject, true);
@@ -126,7 +145,7 @@ namespace Spine.Unity {
 				}
 			}
 
-#if UNITY_EDITOR
+			#if SPINE_EDITOR_MESSAGES
 			bool valid = colliderTable.Count != 0;
 			if (!valid) {
 				if (this.gameObject.activeInHierarchy)
@@ -134,14 +153,14 @@ namespace Spine.Unity {
 				else 
 					Debug.LogWarning("Bounding Box Follower tried to rebuild as a prefab.");
 			}
-#endif
+			#endif
 		}
 
 		void ClearColliders () {
 			var colliders = GetComponents<PolygonCollider2D>();
 			if (colliders.Length == 0) return;
 
-#if UNITY_EDITOR
+			#if UNITY_EDITOR
 			if (Application.isPlaying) {
 				foreach (var c in colliders) {
 					if (c != null)
@@ -151,11 +170,11 @@ namespace Spine.Unity {
 				foreach (var c in colliders)
 					DestroyImmediate(c);
 			}
-#else
+			#else
 			foreach (var c in colliders)
 				if (c != null)
 					Destroy(c);
-#endif
+			#endif
 
 			colliderTable.Clear();
 			attachmentNameTable.Clear();
@@ -174,10 +193,10 @@ namespace Spine.Unity {
 		void MatchAttachment (Attachment attachment) {
 			var bbAttachment = attachment as BoundingBoxAttachment;
 
-#if UNITY_EDITOR
+			#if SPINE_EDITOR_MESSAGES
 			if (attachment != null && bbAttachment == null)
 				Debug.LogWarning("BoundingBoxFollower tried to match a non-boundingbox attachment. It will treat it as null.");
-#endif
+			#endif
 
 			if (currentCollider != null)
 				currentCollider.enabled = false;

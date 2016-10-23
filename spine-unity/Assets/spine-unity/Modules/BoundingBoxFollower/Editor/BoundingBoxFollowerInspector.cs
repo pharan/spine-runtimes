@@ -32,18 +32,20 @@ using UnityEngine;
 using UnityEditor;
 
 namespace Spine.Unity.Editor {
-	
+
 	[CustomEditor(typeof(BoundingBoxFollower))]
 	public class BoundingBoxFollowerInspector : UnityEditor.Editor {
-		SerializedProperty skeletonRenderer, slotName, isTrigger;
+		SerializedProperty skeletonRenderer, slotName, isTrigger, clearStateOnDisable;
 		BoundingBoxFollower follower;
 		bool rebuildRequired = false;
 		bool addBoneFollower = false;
+		bool debugIsExpanded;
 
 		void OnEnable () {
 			skeletonRenderer = serializedObject.FindProperty("skeletonRenderer");
 			slotName = serializedObject.FindProperty("slotName");
 			isTrigger = serializedObject.FindProperty("isTrigger");
+			clearStateOnDisable = serializedObject.FindProperty("clearStateOnDisable");
 			follower = (BoundingBoxFollower)target;
 		}
 
@@ -60,18 +62,12 @@ namespace Spine.Unity.Editor {
 			EditorGUILayout.PropertyField(skeletonRenderer);
 			EditorGUILayout.PropertyField(slotName, new GUIContent("Slot"));
 			EditorGUILayout.PropertyField(isTrigger);
+			EditorGUILayout.PropertyField(clearStateOnDisable, new GUIContent(clearStateOnDisable.displayName, "Enable this if you are pooling your Spine GameObject"));
 
 			if (EditorGUI.EndChangeCheck()) {
 				serializedObject.ApplyModifiedProperties();
 				if (!isInspectingPrefab)
 					rebuildRequired = true;
-			}
-
-			bool hasBoneFollower = follower.GetComponent<BoneFollower>() != null;
-			using (new EditorGUI.DisabledGroupScope(hasBoneFollower || follower.Slot == null)) {
-				if (GUILayout.Button(new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone))) {
-					addBoneFollower = true;
-				}
 			}
 
 			if (isInspectingPrefab) {
@@ -83,21 +79,38 @@ namespace Spine.Unity.Editor {
 				var collider = follower.GetComponent<PolygonCollider2D>();
 				if (collider != null) Debug.LogWarning("Found BoundingBoxFollower collider components in prefab. These are disposed and regenerated at runtime.");
 
-			} else {				
-				EditorGUILayout.LabelField(string.Format("Attachment Names ({0} PolygonCollider2D)", follower.colliderTable.Count), EditorStyles.boldLabel);
-				EditorGUI.BeginChangeCheck();
-				foreach (var kp in follower.attachmentNameTable) {
-					string attachmentName = kp.Value;
-					var collider = follower.colliderTable[kp.Key];
-					bool isPlaceholder = attachmentName != kp.Key.Name;
-					collider.enabled = EditorGUILayout.ToggleLeft(new GUIContent(!isPlaceholder ? attachmentName : attachmentName + " [" + kp.Key.Name + "]", isPlaceholder ? SpineEditorUtilities.Icons.skinPlaceholder : SpineEditorUtilities.Icons.boundingBox), collider.enabled);
-				}
-				if (EditorGUI.EndChangeCheck()) {
-					SceneView.RepaintAll();
+			} else {
+				using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
+					EditorGUI.indentLevel++;
+					debugIsExpanded = EditorGUILayout.Foldout(debugIsExpanded, "Debug Colliders");
+					if (debugIsExpanded) {
+						EditorGUI.indentLevel++;
+						EditorGUILayout.LabelField(string.Format("Attachment Names ({0} PolygonCollider2D)", follower.colliderTable.Count));
+						EditorGUI.BeginChangeCheck();
+						foreach (var kp in follower.attachmentNameTable) {
+							string attachmentName = kp.Value;
+							var collider = follower.colliderTable[kp.Key];
+							bool isPlaceholder = attachmentName != kp.Key.Name;
+							collider.enabled = EditorGUILayout.ToggleLeft(new GUIContent(!isPlaceholder ? attachmentName : attachmentName + " [" + kp.Key.Name + "]", isPlaceholder ? SpineEditorUtilities.Icons.skinPlaceholder : SpineEditorUtilities.Icons.boundingBox), collider.enabled);
+						}
+						if (EditorGUI.EndChangeCheck())
+							SceneView.RepaintAll();
+						EditorGUI.indentLevel--;
+					}
+					EditorGUI.indentLevel--;
 				}
 
-				if (!Application.isPlaying)
-					EditorGUILayout.HelpBox("\nAt runtime, BoundingBoxFollower enables and disables PolygonCollider2Ds based on the currently active attachment in the slot.\n\nCheckboxes in Edit Mode are only for preview. Checkbox states are not saved.\n", MessageType.Info);
+			}
+
+			bool hasBoneFollower = follower.GetComponent<BoneFollower>() != null;
+			using (new EditorGUI.DisabledGroupScope(hasBoneFollower || follower.Slot == null)) {
+				using (new EditorGUILayout.HorizontalScope()) {
+					EditorGUILayout.Space();
+					if (GUILayout.Button(new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone), GUILayout.MaxWidth(300f), GUILayout.Height(40f)))
+						addBoneFollower = true;
+					EditorGUILayout.Space();
+				}
+				EditorGUILayout.Space();
 			}
 
 			if (addBoneFollower && repaintEvent) {
