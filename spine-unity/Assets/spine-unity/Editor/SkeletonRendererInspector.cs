@@ -105,10 +105,11 @@ namespace Spine.Unity.Editor {
 
 		protected virtual void DrawInspectorGUI (bool multi) {
 			bool valid = TargetIsValid;
+			const string ReloadButtonLabel = "Reload";
+
 			if (multi) {
 				using (new EditorGUILayout.HorizontalScope()) {
 					EditorGUILayout.PropertyField(skeletonDataAsset);
-					const string ReloadButtonLabel = "Reload";
 					float reloadWidth = GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20;
 					if (GUILayout.Button(ReloadButtonLabel, GUILayout.Width(reloadWidth))) {
 						foreach (var c in targets) {
@@ -158,7 +159,6 @@ namespace Spine.Unity.Editor {
 				using (new EditorGUILayout.HorizontalScope()) {
 					EditorGUILayout.PropertyField(skeletonDataAsset);
 					if (component.valid) {
-						const string ReloadButtonLabel = "Reload";
 						float reloadWidth = GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20;
 						if (GUILayout.Button(ReloadButtonLabel, GUILayout.Width(reloadWidth))) {
 							if (component.skeletonDataAsset != null) {
@@ -249,9 +249,9 @@ namespace Spine.Unity.Editor {
 		public static void SeparatorsField (SerializedProperty separatorSlotNames) {
 			using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
 				if (separatorSlotNames.isExpanded)
-					EditorGUILayout.PropertyField(separatorSlotNames, includeChildren: true);
+					EditorGUILayout.PropertyField(separatorSlotNames, true);
 				else
-					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + string.Format(" [{0}]", separatorSlotNames.arraySize)), includeChildren: true);
+					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + string.Format(" [{0}]", separatorSlotNames.arraySize)), true);
 			}
 		}
 
@@ -268,7 +268,7 @@ namespace Spine.Unity.Editor {
 				//	}
 			} else {
 				EditorGUILayout.Space();
-				var component = (SkeletonAnimation)target;
+				var component = (Component)target;
 				if (component.GetComponent<SkeletonUtility>() == null) {						
 					if (GUILayout.Button(buttonContent, GUILayout.Height(30)))
 						component.gameObject.AddComponent<SkeletonUtility>();
@@ -280,19 +280,13 @@ namespace Spine.Unity.Editor {
 			//serializedObject.Update();
 			bool multi = serializedObject.isEditingMultipleObjects;
 			DrawInspectorGUI(multi);
-			if (serializedObject.ApplyModifiedProperties() ||
-				(Event.current.type == EventType.ValidateCommand && Event.current.commandName == "UndoRedoPerformed")
-			) {
+			if (serializedObject.ApplyModifiedProperties() || SpineInspectorUtility.UndoRedoPerformed(Event.current)) {
 				if (!Application.isPlaying) {
-					if (multi) {
-						foreach (var o in targets) {
-							var sr = o as SkeletonRenderer;
-							sr.Initialize(true);
-						}
-					} else {
+					if (multi)
+						foreach (var o in targets)
+							((SkeletonRenderer)o).Initialize(true);
+					else
 						((SkeletonRenderer)target).Initialize(true);
-					}
-
 				}
 					
 					

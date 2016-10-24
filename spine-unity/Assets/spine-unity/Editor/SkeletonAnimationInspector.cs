@@ -53,34 +53,33 @@ namespace Spine.Unity.Editor {
 			if (!TargetIsValid) return;
 			bool sameData = SpineInspectorUtility.TargetsUseSameData(serializedObject);
 
-			// Try to reflect the animation name on the scene object.
-			{
-				if (multi)
-					foreach (var o in targets)		
-						TrySetAnimation(o);
-				else
-					TrySetAnimation(target);
-			}
-			
-			EditorGUILayout.Space();
-
-			if (multi && !sameData)
-				EditorGUILayout.DelayedTextField(animationName);
-			else {
-				EditorGUI.BeginChangeCheck();
-				EditorGUILayout.PropertyField(animationName);
-				wasAnimationNameChanged |= EditorGUI.EndChangeCheck(); // Value used in the next update.
-			}
-				
-			EditorGUILayout.PropertyField(loop);
-
-			EditorGUILayout.PropertyField(timeScale);
 			if (multi) {
+				foreach (var o in targets)		
+					TrySetAnimation(o, multi);
+				
+				EditorGUILayout.Space();
+				if (!sameData) {
+					EditorGUILayout.DelayedTextField(animationName);
+				} else {
+					EditorGUI.BeginChangeCheck();
+					EditorGUILayout.PropertyField(animationName);
+					wasAnimationNameChanged |= EditorGUI.EndChangeCheck(); // Value used in the next update.
+				}
+				EditorGUILayout.PropertyField(loop);
+				EditorGUILayout.PropertyField(timeScale);
 				foreach (var o in targets) {
 					var component = o as SkeletonAnimation;
 					component.timeScale = Mathf.Max(component.timeScale, 0);
 				}
 			} else {
+				TrySetAnimation(target, multi);
+
+				EditorGUILayout.Space();
+				EditorGUI.BeginChangeCheck();
+				EditorGUILayout.PropertyField(animationName);
+				wasAnimationNameChanged |= EditorGUI.EndChangeCheck(); // Value used in the next update.
+				EditorGUILayout.PropertyField(loop);
+				EditorGUILayout.PropertyField(timeScale);
 				var component = (SkeletonAnimation)target;
 				component.timeScale = Mathf.Max(component.timeScale, 0);
 			}
@@ -95,7 +94,7 @@ namespace Spine.Unity.Editor {
 			}
 		}
 
-		protected void TrySetAnimation (Object o) {
+		protected void TrySetAnimation (Object o, bool multi) {
 			var skeletonAnimation = o as SkeletonAnimation;
 			if (skeletonAnimation == null) return;
 			if (!skeletonAnimation.valid)
@@ -126,7 +125,6 @@ namespace Spine.Unity.Editor {
 				}
 
 				// Reflect animationName serialized property in the inspector even if SetAnimation API was used.
-				bool multi = animationName.serializedObject.isEditingMultipleObjects;
 				if (!multi && Application.isPlaying) {
 					TrackEntry current = skeletonAnimation.state.GetCurrent(0);
 					if (current != null) {

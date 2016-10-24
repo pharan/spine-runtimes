@@ -40,7 +40,8 @@ using UnityEngine;
 using Spine;
 
 namespace Spine.Unity.Editor {
-	
+	using Event = UnityEngine.Event;
+
 	[CustomEditor(typeof(AtlasAsset))]
 	public class AtlasAssetInspector : UnityEditor.Editor {
 		private SerializedProperty atlasFile, materials;
@@ -322,7 +323,7 @@ namespace Spine.Unity.Editor {
 							GUILayout.EndHorizontal();
 
 						} else {
-							EditorGUILayout.LabelField(new GUIContent("Page missing material!", SpineEditorUtilities.Icons.warning));
+							EditorGUILayout.HelpBox("Page missing material!", MessageType.Warning);
 						}
 					}
 					EditorGUILayout.LabelField(new GUIContent(regions[i].name, SpineEditorUtilities.Icons.image));
@@ -331,9 +332,7 @@ namespace Spine.Unity.Editor {
 			}
 			#endif
 
-			if (serializedObject.ApplyModifiedProperties() ||
-				(UnityEngine.Event.current.type == EventType.ValidateCommand && UnityEngine.Event.current.commandName == "UndoRedoPerformed")
-			) {
+			if (serializedObject.ApplyModifiedProperties() || SpineInspectorUtility.UndoRedoPerformed(Event.current)) {
 				atlasAsset.Reset();
 			}
 		}

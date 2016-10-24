@@ -552,7 +552,7 @@ namespace Spine.Unity.Editor {
 			Spine.Animation a = m_skeletonAnimation.state.GetCurrent(0).Animation;
 			foreach (Timeline t in a.Timelines) {
 				if (t.GetType() == typeof(EventTimeline)) {
-					EventTimeline et = (EventTimeline)t;
+					var et = (EventTimeline)t;
 
 					for (int i = 0; i < et.Events.Length; i++) {
 						m_animEvents.Add(et.Events[i]);
