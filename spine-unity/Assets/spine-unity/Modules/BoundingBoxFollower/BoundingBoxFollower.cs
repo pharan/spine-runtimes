@@ -168,7 +168,8 @@ namespace Spine.Unity {
 				}
 			} else {
 				foreach (var c in colliders)
-					DestroyImmediate(c);
+					if (c != null) 
+						DestroyImmediate(c);
 			}
 			#else
 			foreach (var c in colliders)

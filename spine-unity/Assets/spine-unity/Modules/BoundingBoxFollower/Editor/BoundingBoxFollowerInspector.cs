@@ -32,6 +32,7 @@ using UnityEngine;
 using UnityEditor;
 
 namespace Spine.Unity.Editor {
+	using Event = UnityEngine.Event;
 
 	[CustomEditor(typeof(BoundingBoxFollower))]
 	public class BoundingBoxFollowerInspector : UnityEditor.Editor {
@@ -39,6 +40,7 @@ namespace Spine.Unity.Editor {
 		BoundingBoxFollower follower;
 		bool rebuildRequired = false;
 		bool addBoneFollower = false;
+		bool sceneRepaintRequired = false;
 		bool debugIsExpanded;
 
 		void OnEnable () {
@@ -51,23 +53,30 @@ namespace Spine.Unity.Editor {
 
 		public override void OnInspectorGUI () {
 			bool isInspectingPrefab = (PrefabUtility.GetPrefabType(target) == PrefabType.Prefab);
-			bool repaintEvent = UnityEngine.Event.current.type == EventType.Repaint;
-
-			if (rebuildRequired) {
-				follower.HandleRebuild(null);
-				rebuildRequired = false;
-			}
+			bool repaintEvent = Event.current.type == EventType.Repaint;
 
 			EditorGUI.BeginChangeCheck();
 			EditorGUILayout.PropertyField(skeletonRenderer);
 			EditorGUILayout.PropertyField(slotName, new GUIContent("Slot"));
-			EditorGUILayout.PropertyField(isTrigger);
-			EditorGUILayout.PropertyField(clearStateOnDisable, new GUIContent(clearStateOnDisable.displayName, "Enable this if you are pooling your Spine GameObject"));
-
 			if (EditorGUI.EndChangeCheck()) {
 				serializedObject.ApplyModifiedProperties();
 				if (!isInspectingPrefab)
 					rebuildRequired = true;
+			}
+
+			EditorGUI.BeginChangeCheck();
+			EditorGUILayout.PropertyField(isTrigger);
+			bool triggerChanged = EditorGUI.EndChangeCheck();
+
+			EditorGUI.BeginChangeCheck();
+			EditorGUILayout.PropertyField(clearStateOnDisable, new GUIContent(clearStateOnDisable.displayName, "Enable this if you are pooling your Spine GameObject"));
+			bool clearStateChanged = EditorGUI.EndChangeCheck();
+
+			if (clearStateChanged || triggerChanged) {
+				serializedObject.ApplyModifiedProperties();
+				if (triggerChanged)
+					foreach (var col in follower.colliderTable.Values)
+						col.isTrigger = isTrigger.boolValue;
 			}
 
 			if (isInspectingPrefab) {
@@ -83,6 +92,7 @@ namespace Spine.Unity.Editor {
 				using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
 					EditorGUI.indentLevel++;
 					debugIsExpanded = EditorGUILayout.Foldout(debugIsExpanded, "Debug Colliders");
+
 					if (debugIsExpanded) {
 						EditorGUI.indentLevel++;
 						EditorGUILayout.LabelField(string.Format("Attachment Names ({0} PolygonCollider2D)", follower.colliderTable.Count));
@@ -93,8 +103,7 @@ namespace Spine.Unity.Editor {
 							bool isPlaceholder = attachmentName != kp.Key.Name;
 							collider.enabled = EditorGUILayout.ToggleLeft(new GUIContent(!isPlaceholder ? attachmentName : attachmentName + " [" + kp.Key.Name + "]", isPlaceholder ? SpineEditorUtilities.Icons.skinPlaceholder : SpineEditorUtilities.Icons.boundingBox), collider.enabled);
 						}
-						if (EditorGUI.EndChangeCheck())
-							SceneView.RepaintAll();
+						sceneRepaintRequired |= EditorGUI.EndChangeCheck();
 						EditorGUI.indentLevel--;
 					}
 					EditorGUI.indentLevel--;
@@ -103,20 +112,32 @@ namespace Spine.Unity.Editor {
 			}
 
 			bool hasBoneFollower = follower.GetComponent<BoneFollower>() != null;
-			using (new EditorGUI.DisabledGroupScope(hasBoneFollower || follower.Slot == null)) {
+			bool buttonDisabled = hasBoneFollower || follower.Slot == null;
+			using (new EditorGUI.DisabledGroupScope(buttonDisabled)) {
 				using (new EditorGUILayout.HorizontalScope()) {
 					EditorGUILayout.Space();
-					if (GUILayout.Button(new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone), GUILayout.MaxWidth(300f), GUILayout.Height(40f)))
-						addBoneFollower = true;
+					addBoneFollower |= GUILayout.Button(new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone), GUILayout.MaxWidth(300f), GUILayout.Height(40f));
 					EditorGUILayout.Space();
 				}
 				EditorGUILayout.Space();
 			}
 
-			if (addBoneFollower && repaintEvent) {
-				var boneFollower = follower.gameObject.AddComponent<BoneFollower>();
-				boneFollower.boneName = follower.Slot.Data.BoneData.Name;
-				addBoneFollower = false;
+			if (repaintEvent) {
+				if (addBoneFollower) {
+					var boneFollower = follower.gameObject.AddComponent<BoneFollower>();
+					boneFollower.boneName = follower.Slot.Data.BoneData.Name;
+					addBoneFollower = false;
+				}
+
+				if (sceneRepaintRequired) {
+					SceneView.RepaintAll();
+					sceneRepaintRequired = false;
+				}
+
+				if (rebuildRequired) {
+					follower.HandleRebuild(null);
+					rebuildRequired = false;
+				}
 			}
 		}
 
