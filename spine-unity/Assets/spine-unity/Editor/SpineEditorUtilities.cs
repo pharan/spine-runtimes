@@ -275,7 +275,7 @@ namespace Spine.Unity.Editor {
 		}
 		#endregion
 
-		#region Drag and Drop to Scene View
+		#region Drag and Drop Instantiation
 
 		public delegate Component InstantiateDelegate (SkeletonDataAsset skeletonDataAsset);
 
@@ -537,7 +537,6 @@ namespace Spine.Unity.Editor {
 			// Import atlases first.
 			var atlases = new List<AtlasAsset>();
 			foreach (string ap in atlasPaths) {
-				// MITCH: left note: Always import atlas data now.
 				TextAsset atlasText = (TextAsset)AssetDatabase.LoadAssetAtPath(ap, typeof(TextAsset));
 				AtlasAsset atlas = IngestSpineAtlas(atlasText);
 				atlases.Add(atlas);
@@ -609,7 +608,7 @@ namespace Spine.Unity.Editor {
 					break;
 				#endif
 			}
-			// MITCH: left a todo: any post processing of images
+			// Any post processing of images
 		}
 
 		static void ResetExistingSkeletonData (string skeletonJSONPath) {
@@ -1085,26 +1084,26 @@ namespace Spine.Unity.Editor {
 
 			#else
 			if (spineJson != null && atlasAssets != null) {
-				SkeletonDataAsset skelDataAsset = (SkeletonDataAsset)AssetDatabase.LoadAssetAtPath(filePath, typeof(SkeletonDataAsset));
-				if (skelDataAsset == null) {
-					skelDataAsset = SkeletonDataAsset.CreateInstance<SkeletonDataAsset>();
-					skelDataAsset.atlasAssets = atlasAssets;
-					skelDataAsset.skeletonJSON = spineJson;
-					skelDataAsset.fromAnimation = new string[0];
-					skelDataAsset.toAnimation = new string[0];
-					skelDataAsset.duration = new float[0];
-					skelDataAsset.defaultMix = defaultMix;
-					skelDataAsset.scale = defaultScale;
+				SkeletonDataAsset skeletonDataAsset = (SkeletonDataAsset)AssetDatabase.LoadAssetAtPath(filePath, typeof(SkeletonDataAsset));
+				if (skeletonDataAsset == null) {
+					skeletonDataAsset = SkeletonDataAsset.CreateInstance<SkeletonDataAsset>();
+					skeletonDataAsset.atlasAssets = atlasAssets;
+					skeletonDataAsset.skeletonJSON = spineJson;
+					skeletonDataAsset.fromAnimation = new string[0];
+					skeletonDataAsset.toAnimation = new string[0];
+					skeletonDataAsset.duration = new float[0];
+					skeletonDataAsset.defaultMix = defaultMix;
+					skeletonDataAsset.scale = defaultScale;
 
-					AssetDatabase.CreateAsset(skelDataAsset, filePath);
+					AssetDatabase.CreateAsset(skeletonDataAsset, filePath);
 					AssetDatabase.SaveAssets();
 				} else {
-					skelDataAsset.atlasAssets = atlasAssets;
-					skelDataAsset.Reset();
-					skelDataAsset.GetSkeletonData(true);
+					skeletonDataAsset.atlasAssets = atlasAssets;
+					skeletonDataAsset.Reset();
+					skeletonDataAsset.GetSkeletonData(true);
 				}
 
-				return skelDataAsset;
+				return skeletonDataAsset;
 			} else {
 				EditorUtility.DisplayDialog("Error!", "Must specify both Spine JSON and AtlasAsset array", "OK");
 				return null;
@@ -1115,7 +1114,7 @@ namespace Spine.Unity.Editor {
 
 		#region Checking Methods
 		static int[][] compatibleVersions = { new[] {3, 5, 0} };
-		static bool isFixVersionRequired = false;
+		//static bool isFixVersionRequired = false;
 
 		static bool CheckForValidSkeletonData (string skeletonJSONPath) {
 			string dir = Path.GetDirectoryName(skeletonJSONPath);
@@ -1166,8 +1165,7 @@ namespace Spine.Unity.Editor {
 						bool primaryMatch = version[0] == int.Parse(jsonVersionSplit[0]);
 						bool secondaryMatch = version[1] == int.Parse(jsonVersionSplit[1]);
 
-						if (isFixVersionRequired)
-							secondaryMatch &= version[2] <= int.Parse(jsonVersionSplit[2]);
+						// if (isFixVersionRequired) secondaryMatch &= version[2] <= int.Parse(jsonVersionSplit[2]);
 
 						if (primaryMatch && secondaryMatch) {
 							match = true;
@@ -1238,9 +1236,6 @@ namespace Spine.Unity.Editor {
 				return null;
 			}
 
-			if (skin == null) skin = data.DefaultSkin;
-			if (skin == null) skin = data.Skins.Items[0];
-
 			string spineGameObjectName = string.Format("Spine GameObject ({0})", skeletonDataAsset.name.Replace("_SkeletonData", ""));
 			GameObject go = new GameObject(spineGameObjectName, typeof(MeshFilter), typeof(MeshRenderer), typeof(SkeletonAnimation));
 			SkeletonAnimation newSkeletonAnimation = go.GetComponent<SkeletonAnimation>();
@@ -1269,11 +1264,12 @@ namespace Spine.Unity.Editor {
 				throw e;
 			}
 
+			skin = skin ?? data.DefaultSkin ?? data.Skins.Items[0];
 			newSkeletonAnimation.skeleton.SetSkin(skin);
 			newSkeletonAnimation.initialSkinName = skin.Name;
 
-			newSkeletonAnimation.skeleton.Update(1);
-			newSkeletonAnimation.state.Update(1);
+			newSkeletonAnimation.skeleton.Update(0);
+			newSkeletonAnimation.state.Update(0);
 			newSkeletonAnimation.state.Apply(newSkeletonAnimation.skeleton);
 			newSkeletonAnimation.skeleton.UpdateWorldTransform();
 
@@ -1308,8 +1304,8 @@ namespace Spine.Unity.Editor {
 			SkeletonAnimator anim = go.GetComponent<SkeletonAnimator>();
 			anim.skeletonDataAsset = skeletonDataAsset;
 
+			// Detect "Lit" shader and automatically enable calculateNormals.
 			bool requiresNormals = false;
-
 			foreach (AtlasAsset atlasAsset in anim.skeletonDataAsset.atlasAssets) {
 				foreach (Material m in atlasAsset.materials) {
 					if (m.shader.name.Contains("Lit")) {
@@ -1318,32 +1314,24 @@ namespace Spine.Unity.Editor {
 					}
 				}
 			}
-
 			anim.calculateNormals = requiresNormals;
 
 			SkeletonData data = skeletonDataAsset.GetSkeletonData(true);
-
 			if (data == null) {
 				for (int i = 0; i < skeletonDataAsset.atlasAssets.Length; i++) {
 					string reloadAtlasPath = AssetDatabase.GetAssetPath(skeletonDataAsset.atlasAssets[i]);
 					skeletonDataAsset.atlasAssets[i] = (AtlasAsset)AssetDatabase.LoadAssetAtPath(reloadAtlasPath, typeof(AtlasAsset));
 				}
-
 				data = skeletonDataAsset.GetSkeletonData(true);
 			}
 
-			if (skin == null)
-				skin = data.DefaultSkin;
-
-			if (skin == null)
-				skin = data.Skins.Items[0];
+			skin = skin ?? data.DefaultSkin ?? data.Skins.Items[0];
 
 			anim.Initialize(false);
-
 			anim.skeleton.SetSkin(skin);
 			anim.initialSkinName = skin.Name;
 
-			anim.skeleton.Update(1);
+			anim.skeleton.Update(0);
 			anim.skeleton.UpdateWorldTransform();
 			anim.LateUpdate();
 

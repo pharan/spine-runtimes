@@ -56,45 +56,23 @@ namespace Spine.Unity.Editor {
 			}
 		}
 
-		#region Sorting Layer Field Helpers
-		static readonly GUIContent SortingLayerLabel = new GUIContent("Sorting Layer");
-		static readonly GUIContent OrderInLayerLabel = new GUIContent("Order in Layer");
-
-		static MethodInfo m_SortingLayerFieldMethod;
-		static MethodInfo SortingLayerFieldMethod {
-			get {
-				if (m_SortingLayerFieldMethod == null)
-					m_SortingLayerFieldMethod = typeof(EditorGUILayout).GetMethod("SortingLayerField", BindingFlags.Static | BindingFlags.NonPublic, null, new [] { typeof(GUIContent), typeof(SerializedProperty), typeof(GUIStyle) }, null);
-
-				return m_SortingLayerFieldMethod;
-			}
+		public static bool UndoRedoPerformed (UnityEngine.Event current) {
+			return current.type == EventType.ValidateCommand && current.commandName == "UndoRedoPerformed";
 		}
 
-		public struct SerializedSortingProperties {
-			public SerializedObject renderer;
-			public SerializedProperty sortingLayerID;
-			public SerializedProperty sortingOrder;
-
-			public SerializedSortingProperties (Renderer r) : this(new SerializedObject(r)) {}
-			public SerializedSortingProperties (Object[] renderers) : this(new SerializedObject(renderers)) {}
-			public SerializedSortingProperties (SerializedObject rendererSerializedObject) {
-				renderer = rendererSerializedObject;
-				sortingLayerID = renderer.FindProperty("m_SortingLayerID");
-				sortingOrder = renderer.FindProperty("m_SortingOrder");
+		#region Multi-Editing Helpers
+		public static bool TargetsUseSameData (SerializedObject so) {
+			bool multi = so.isEditingMultipleObjects;
+			if (multi) {
+				int n = so.targetObjects.Length;
+				var first = so.targetObjects[0] as ISkeletonComponent;
+				for (int i = 1; i < n; i++) {
+					var sr = so.targetObjects[i] as ISkeletonComponent;
+					if (sr != null && sr.SkeletonDataAsset != first.SkeletonDataAsset)
+						return false;
+				}
 			}
-
-			public void ApplyModifiedProperties () {
-				renderer.ApplyModifiedProperties();
-				this.SetDirty();
-			}
-
-			internal void SetDirty () {
-				if (renderer.isEditingMultipleObjects)
-					foreach (var o in renderer.targetObjects)
-						EditorUtility.SetDirty(o);
-				else
-					EditorUtility.SetDirty(renderer.targetObject);
-			}
+			return true;
 		}
 
 		public static SerializedObject GetRenderersSerializedObject (SerializedObject serializedObject) {
@@ -120,40 +98,67 @@ namespace Spine.Unity.Editor {
 
 			return null;
 		}
+		#endregion
 
-		public static bool TargetsUseSameData (SerializedObject so) {
-			bool multi = so.isEditingMultipleObjects;
-			if (multi) {
-				int n = so.targetObjects.Length;
-				var first = so.targetObjects[0] as SkeletonRenderer;
-				for (int i = 1; i < n; i++) {
-					var sr = so.targetObjects[i] as SkeletonRenderer;
-					if (sr != null && sr.skeletonDataAsset != first.skeletonDataAsset)
-						return false;
-				}
+		#region Sorting Layer Field Helpers
+		static readonly GUIContent SortingLayerLabel = new GUIContent("Sorting Layer");
+		static readonly GUIContent OrderInLayerLabel = new GUIContent("Order in Layer");
+
+		static MethodInfo m_SortingLayerFieldMethod;
+		static MethodInfo SortingLayerFieldMethod {
+			get {
+				if (m_SortingLayerFieldMethod == null)
+					m_SortingLayerFieldMethod = typeof(EditorGUILayout).GetMethod("SortingLayerField", BindingFlags.Static | BindingFlags.NonPublic, null, new [] { typeof(GUIContent), typeof(SerializedProperty), typeof(GUIStyle) }, null);
+
+				return m_SortingLayerFieldMethod;
 			}
-			return true;
+		}
+
+		public struct SerializedSortingProperties {
+			public SerializedObject renderer;
+			public SerializedProperty sortingLayerID;
+			public SerializedProperty sortingOrder;
+
+			public SerializedSortingProperties (Renderer r) : this(new SerializedObject(r)) {}
+			public SerializedSortingProperties (Object[] renderers) : this(new SerializedObject(renderers)) {}
+
+			/// <summary>
+			/// Initializes a new instance of the
+			/// <see cref="Spine.Unity.Editor.SpineInspectorUtility.SerializedSortingProperties"/> struct.
+			/// </summary>
+			/// <param name="rendererSerializedObject">SerializedObject of the renderer. Use 
+			/// <see cref="Spine.Unity.Editor.SpineInspectorUtility.GetRenderersSerializedObject"/> to easily generate this.</param>
+			public SerializedSortingProperties (SerializedObject rendererSerializedObject) {
+				renderer = rendererSerializedObject;
+				sortingLayerID = renderer.FindProperty("m_SortingLayerID");
+				sortingOrder = renderer.FindProperty("m_SortingOrder");
+			}
+
+			public void ApplyModifiedProperties () {
+				renderer.ApplyModifiedProperties();
+
+				// SetDirty
+				if (renderer.isEditingMultipleObjects)
+					foreach (var o in renderer.targetObjects)
+						EditorUtility.SetDirty(o);
+				else
+					EditorUtility.SetDirty(renderer.targetObject);
+			}
 		}
 
 		public static void SortingPropertyFields (SerializedSortingProperties prop, bool applyModifiedProperties) {
-			if (applyModifiedProperties) {
+			if (applyModifiedProperties)
 				EditorGUI.BeginChangeCheck();
-				SortingPropertyFields(prop.sortingLayerID, prop.sortingOrder);
-				if(EditorGUI.EndChangeCheck())
+
+			if (SpineInspectorUtility.SortingLayerFieldMethod != null && prop.sortingLayerID != null)
+				SpineInspectorUtility.SortingLayerFieldMethod.Invoke(null, new object[] { SortingLayerLabel, prop.sortingLayerID, EditorStyles.popup } );
+			else
+				EditorGUILayout.PropertyField(prop.sortingLayerID);
+
+			EditorGUILayout.PropertyField(prop.sortingOrder, OrderInLayerLabel);
+
+			if (applyModifiedProperties && EditorGUI.EndChangeCheck())
 					prop.ApplyModifiedProperties();
-			} else {
-				SortingPropertyFields(prop.sortingLayerID, prop.sortingOrder);
-			}
-		}
-
-		public static void SortingPropertyFields (SerializedProperty m_SortingLayerID, SerializedProperty m_SortingOrder) {
-			if (SpineInspectorUtility.SortingLayerFieldMethod != null && m_SortingLayerID != null) {
-				SpineInspectorUtility.SortingLayerFieldMethod.Invoke(null, new object[] { SortingLayerLabel, m_SortingLayerID, EditorStyles.popup } );
-			} else {
-				EditorGUILayout.PropertyField(m_SortingLayerID);
-			}
-
-			EditorGUILayout.PropertyField(m_SortingOrder, OrderInLayerLabel);
 		}
 		#endregion
 	}
