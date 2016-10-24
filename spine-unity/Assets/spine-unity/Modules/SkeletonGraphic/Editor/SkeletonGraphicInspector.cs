@@ -44,7 +44,7 @@ namespace Spine.Unity.Editor {
 	public class SkeletonGraphicInspector : UnityEditor.Editor {
 		SerializedProperty material_, color_;
 		SerializedProperty skeletonDataAsset_, initialSkinName_;
-		SerializedProperty startingAnimation_, startingLoop_, timeScale_, freeze_;
+		SerializedProperty startingAnimation_, startingLoop_, timeScale_, freeze_, unscaledTime_;
 	#if !PREUNITY_5_2
 		SerializedProperty raycastTarget_;
 
@@ -67,6 +67,7 @@ namespace Spine.Unity.Editor {
 			startingAnimation_ = so.FindProperty("startingAnimation");
 			startingLoop_ = so.FindProperty("startingLoop");
 			timeScale_ = so.FindProperty("timeScale");
+			unscaledTime_ = so.FindProperty("unscaledTime");
 			freeze_ = so.FindProperty("freeze");
 		}
 
@@ -91,6 +92,7 @@ namespace Spine.Unity.Editor {
 			EditorGUILayout.PropertyField(startingAnimation_);
 			EditorGUILayout.PropertyField(startingLoop_);
 			EditorGUILayout.PropertyField(timeScale_);
+			EditorGUILayout.PropertyField(unscaledTime_, new GUIContent(unscaledTime_.displayName, "If checked, this will use Time.unscaledDeltaTime to make this update independent of game Time.timeScale. Instance SkeletonGraphic.timeScale will still be applied."));
 			EditorGUILayout.Space();
 			EditorGUILayout.PropertyField(freeze_);
 			EditorGUILayout.Space();
@@ -99,9 +101,8 @@ namespace Spine.Unity.Editor {
 
 			bool wasChanged = EditorGUI.EndChangeCheck();
 
-			if (wasChanged) {
+			if (wasChanged)
 				serializedObject.ApplyModifiedProperties();
-			}
 		}
 
 		#region Menus
