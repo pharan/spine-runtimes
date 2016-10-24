@@ -144,7 +144,7 @@ namespace Spine {
 				data.shearX = ReadFloat(input);
 				data.shearY = ReadFloat(input);
 				data.length = ReadFloat(input) * scale;
-				data.transformMode = TransformModeValues[ReadInt(input)];
+				data.transformMode = TransformModeValues[ReadVarint(input, true)];
 				if (nonessential) ReadInt(input); // Skip bone color.
 				skeletonData.bones.Add(data);
 			}
@@ -167,7 +167,7 @@ namespace Spine {
 			// IK constraints.
 			for (int i = 0, n = ReadVarint(input, true); i < n; i++) {
 				IkConstraintData data = new IkConstraintData(ReadString(input));
-				data.order = ReadInt(input);
+				data.order = ReadVarint(input, true);
 				for (int ii = 0, nn = ReadVarint(input, true); ii < nn; ii++)
 					data.bones.Add(skeletonData.bones.Items[ReadVarint(input, true)]);
 				data.target = skeletonData.bones.Items[ReadVarint(input, true)];
@@ -179,7 +179,7 @@ namespace Spine {
 			// Transform constraints.
 			for (int i = 0, n = ReadVarint(input, true); i < n; i++) {
 				TransformConstraintData data = new TransformConstraintData(ReadString(input));
-				data.order = ReadInt(input);
+				data.order = ReadVarint(input, true);
 				for (int ii = 0, nn = ReadVarint(input, true); ii < nn; ii++)
 				    data.bones.Add(skeletonData.bones.Items[ReadVarint(input, true)]);
 				data.target = skeletonData.bones.Items[ReadVarint(input, true)];
@@ -199,7 +199,7 @@ namespace Spine {
 			// Path constraints
 			for (int i = 0, n = ReadVarint(input, true); i < n; i++) {
 				PathConstraintData data = new PathConstraintData(ReadString(input));
-				data.order = ReadInt(input);
+				data.order = ReadVarint(input, true);
 				for (int ii = 0, nn = ReadVarint(input, true); ii < nn; ii++)
 					data.bones.Add(skeletonData.bones.Items[ReadVarint(input, true)]);
 				data.target = skeletonData.slots.Items[ReadVarint(input, true)];
