@@ -49,16 +49,96 @@ namespace Spine.Unity.Editor {
 		}
 
 		public static void PropertyFieldWideLabel (SerializedProperty property, GUIContent label = null, float minimumLabelWidth = 150) {
-			using (new EditorGUILayout.HorizontalScope()) {
-				GUILayout.Label(label ?? new GUIContent(property.displayName, property.tooltip), GUILayout.MinWidth(minimumLabelWidth));
-				//GUILayout.FlexibleSpace();
-				EditorGUILayout.PropertyField(property, GUIContent.none, true, GUILayout.MinWidth(100));
-			}
+			EditorGUIUtility.labelWidth = minimumLabelWidth;
+			EditorGUILayout.PropertyField(property, label ?? new GUIContent(property.displayName, property.tooltip));
+			EditorGUIUtility.labelWidth = 0; // Resets to default
+		}
+
+		public static void PropertyFieldFitLabel (SerializedProperty property, GUIContent label = null, float extraSpace = 5f) {
+			label = label ?? new GUIContent(property.displayName, property.tooltip);
+			float width = GUI.skin.label.CalcSize(new GUIContent(label.text)).x + extraSpace;
+			if (label.image != null)
+				width += EditorGUIUtility.singleLineHeight;
+			PropertyFieldWideLabel(property, label, width);
+
 		}
 
 		public static bool UndoRedoPerformed (UnityEngine.Event current) {
 			return current.type == EventType.ValidateCommand && current.commandName == "UndoRedoPerformed";
 		}
+
+		#region Layout Scopes
+		public class LabelWidthScope : System.IDisposable {
+			public LabelWidthScope (float minimumLabelWidth = 190f) {
+				EditorGUIUtility.labelWidth = minimumLabelWidth;
+			}
+
+			public void Dispose () {
+				EditorGUIUtility.labelWidth = 0f;
+			}
+		}
+
+		public class BoxScope : System.IDisposable {
+			readonly bool indent;
+
+			public BoxScope (bool indent = true) {
+				this.indent = indent;
+				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+				if (indent) EditorGUI.indentLevel++;
+			}
+				
+			public void Dispose () {
+				if (indent) EditorGUI.indentLevel--;
+				EditorGUILayout.EndVertical();
+			}
+		}
+		#endregion
+
+		#region Button
+		const float CenterButtonMaxWidth = 270f;
+		const float CenterButtonHeight = 35f;
+		static GUIStyle spineButtonStyle;
+		static GUIStyle SpineButtonStyle {
+			get {
+				if (spineButtonStyle == null) {
+					spineButtonStyle = new GUIStyle(GUI.skin.button);
+					spineButtonStyle.name = "Spine Button";
+					spineButtonStyle.padding = new RectOffset(10, 10, 10, 10);
+				}
+				return spineButtonStyle;
+			}
+		}
+
+		public static bool LargeCenteredButton (string label, bool sideSpace = true) {
+			if (sideSpace) {
+				bool clicked;
+				using (new EditorGUILayout.HorizontalScope()) {
+					EditorGUILayout.Space();
+					clicked = GUILayout.Button(label, SpineButtonStyle, GUILayout.MaxWidth(CenterButtonMaxWidth), GUILayout.Height(CenterButtonHeight));
+					EditorGUILayout.Space();
+				}
+				EditorGUILayout.Space();
+				return clicked;
+			} else {
+				return GUILayout.Button(label, GUILayout.MaxWidth(CenterButtonMaxWidth), GUILayout.Height(CenterButtonHeight));
+			}
+		}
+
+		public static bool LargeCenteredButton (GUIContent content, bool sideSpace = true) {
+			if (sideSpace) {
+				bool clicked;
+				using (new EditorGUILayout.HorizontalScope()) {
+					EditorGUILayout.Space();
+					clicked = GUILayout.Button(content, SpineButtonStyle, GUILayout.MaxWidth(CenterButtonMaxWidth), GUILayout.Height(CenterButtonHeight));
+					EditorGUILayout.Space();
+				}
+				EditorGUILayout.Space();
+				return clicked;
+			} else {
+				return GUILayout.Button(content, GUILayout.MaxWidth(CenterButtonMaxWidth), GUILayout.Height(CenterButtonHeight));
+			}
+		}
+		#endregion
 
 		#region Multi-Editing Helpers
 		public static bool TargetsUseSameData (SerializedObject so) {

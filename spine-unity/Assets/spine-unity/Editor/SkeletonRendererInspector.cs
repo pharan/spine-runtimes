@@ -45,6 +45,8 @@ namespace Spine.Unity.Editor {
 		protected SpineInspectorUtility.SerializedSortingProperties sortingProperties;
 		protected bool isInspectingPrefab;
 
+		readonly GUIContent SkeletonDataAssetLabel = new GUIContent("SkeletonData Asset", SpineEditorUtilities.Icons.spine);
+
 		protected bool TargetIsValid {
 			get {
 				if (serializedObject.isEditingMultipleObjects) {
@@ -108,8 +110,8 @@ namespace Spine.Unity.Editor {
 			const string ReloadButtonLabel = "Reload";
 
 			if (multi) {
-				using (new EditorGUILayout.HorizontalScope()) {
-					EditorGUILayout.PropertyField(skeletonDataAsset);
+				using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
+					SpineInspectorUtility.PropertyFieldFitLabel(skeletonDataAsset, SkeletonDataAssetLabel);
 					float reloadWidth = GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20;
 					if (GUILayout.Button(ReloadButtonLabel, GUILayout.Width(reloadWidth))) {
 						foreach (var c in targets) {
@@ -156,8 +158,8 @@ namespace Spine.Unity.Editor {
 					component.LateUpdate();
 				}
 
-				using (new EditorGUILayout.HorizontalScope()) {
-					EditorGUILayout.PropertyField(skeletonDataAsset);
+				using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
+					SpineInspectorUtility.PropertyFieldFitLabel(skeletonDataAsset, SkeletonDataAssetLabel);
 					if (component.valid) {
 						float reloadWidth = GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20;
 						if (GUILayout.Button(ReloadButtonLabel, GUILayout.Width(reloadWidth))) {
@@ -209,40 +211,44 @@ namespace Spine.Unity.Editor {
 			if (!TargetIsValid) return;
 			
 			// More Render Options...
-			using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
-				EditorGUI.indentLevel++;
-				advancedFoldout = EditorGUILayout.Foldout(advancedFoldout, "Advanced");
-				if (advancedFoldout) {
+			using (new SpineInspectorUtility.BoxScope()) {
+				if (advancedFoldout = EditorGUILayout.Foldout(advancedFoldout, "Advanced")) {
 					EditorGUI.indentLevel++;
 					SeparatorsField(separatorSlotNames);
 					EditorGUILayout.Space();
 
-					// Optimization options
-					SpineInspectorUtility.PropertyFieldWideLabel(meshes,
-						new GUIContent("Render MeshAttachments", "Disable to optimize rendering for skeletons that don't use Mesh Attachments"));
-					SpineInspectorUtility.PropertyFieldWideLabel(immutableTriangles,
-						new GUIContent("Immutable Triangles", "Enable to optimize rendering for skeletons that never change attachment visbility"));
-					EditorGUILayout.Space();
+					using (new SpineInspectorUtility.LabelWidthScope()) {
+						// Optimization options
+						EditorGUILayout.PropertyField(meshes,
+							new GUIContent("Render MeshAttachments", "Disable to optimize rendering for skeletons that don't use Mesh Attachments"));
+						EditorGUILayout.PropertyField(immutableTriangles,
+							new GUIContent("Immutable Triangles", "Enable to optimize rendering for skeletons that never change attachment visbility"));
+						EditorGUILayout.Space();
+					}
+
 
 					// Render options
 					const float MinZSpacing = -0.1f;
 					const float MaxZSpacing = 0f;
 					EditorGUILayout.Slider(zSpacing, MinZSpacing, MaxZSpacing);
 					EditorGUILayout.Space();
-					SpineInspectorUtility.PropertyFieldWideLabel(pmaVertexColors,
-						new GUIContent("PMA Vertex Colors", "Use this if you are using the default Spine/Skeleton shader or any premultiply-alpha shader."));
 
-					SpineInspectorUtility.PropertyFieldWideLabel(clearStateOnDisable,
-						new GUIContent("Clear State On Disable", "Use this if you are pooling or enabling/disabling your Spine GameObject."));
+					using (new SpineInspectorUtility.LabelWidthScope()) {
+						EditorGUILayout.PropertyField(pmaVertexColors,
+							new GUIContent("PMA Vertex Colors", "Use this if you are using the default Spine/Skeleton shader or any premultiply-alpha shader."));
 
-					// Optional fields. May be disabled in SkeletonRenderer.
-					if (normals != null) SpineInspectorUtility.PropertyFieldWideLabel(normals, new GUIContent("Add Normals"));
-					if (tangents != null) SpineInspectorUtility.PropertyFieldWideLabel(tangents, new GUIContent("Solve Tangents"));
-					if (frontFacing != null) SpineInspectorUtility.PropertyFieldWideLabel(frontFacing);
+						EditorGUILayout.PropertyField(clearStateOnDisable,
+							new GUIContent("Clear State On Disable", "Use this if you are pooling or enabling/disabling your Spine GameObject."));
 
+						// Optional fields. May be disabled in SkeletonRenderer.
+						if (normals != null) EditorGUILayout.PropertyField(normals, new GUIContent("Add Normals"));
+						if (tangents != null) EditorGUILayout.PropertyField(tangents, new GUIContent("Solve Tangents"));
+						if (frontFacing != null) EditorGUILayout.PropertyField(frontFacing);
+					}
+
+					EditorGUILayout.Space();
 					EditorGUI.indentLevel--;
 				}
-				EditorGUI.indentLevel--;
 			}
 		}
 
@@ -252,11 +258,14 @@ namespace Spine.Unity.Editor {
 					EditorGUILayout.PropertyField(separatorSlotNames, true);
 				else
 					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + string.Format(" [{0}]", separatorSlotNames.arraySize)), true);
+				EditorGUILayout.Space();
 			}
 		}
 
+		readonly GUIContent SkeletonUtilityButtonContent = new GUIContent("Add Skeleton Utility", SpineEditorUtilities.Icons.skeletonUtility);
+
 		public void DrawSkeletonUtilityButton (bool multi) {
-			var buttonContent = new GUIContent("Add Skeleton Utility", SpineEditorUtilities.Icons.skeletonUtility);
+			
 			if (multi) {
 				// Support multi-edit SkeletonUtility button.
 				//	EditorGUILayout.Space();
@@ -270,7 +279,7 @@ namespace Spine.Unity.Editor {
 				EditorGUILayout.Space();
 				var component = (Component)target;
 				if (component.GetComponent<SkeletonUtility>() == null) {						
-					if (GUILayout.Button(buttonContent, GUILayout.Height(30)))
+					if (SpineInspectorUtility.LargeCenteredButton(SkeletonUtilityButtonContent))
 						component.gameObject.AddComponent<SkeletonUtility>();
 				}
 			}

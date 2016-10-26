@@ -71,9 +71,10 @@ namespace Spine.Unity.Editor {
 		string m_skeletonDataAssetGUID;
 		bool needToSerialize;
 
-		List<string> warnings = new List<string>();
+		readonly List<string> warnings = new List<string>();
 
 		GUIStyle activePlayButtonStyle, idlePlayButtonStyle;
+		readonly GUIContent DefaultMixLabel = new GUIContent("Default Mix Duration", "Sets 'SkeletonDataAsset.defaultMix' in the asset and 'AnimationState.data.defaultMix' at runtime load time.");
 
 		void OnEnable () {
 			SpineEditorUtilities.ConfirmInitialization();
@@ -131,20 +132,31 @@ namespace Spine.Unity.Editor {
 
 			serializedObject.Update();
 
+			EditorGUILayout.LabelField(new GUIContent(target.name + " (SkeletonDataAsset)", SpineEditorUtilities.Icons.spine), EditorStyles.whiteLargeLabel);
+
 			EditorGUI.BeginChangeCheck();
-			#if !SPINE_TK2D
-			EditorGUILayout.PropertyField(atlasAssets, true);
-			#else
-			using (new EditorGUI.DisabledGroupScope(spriteCollection.objectReferenceValue != null)) {
-				EditorGUILayout.PropertyField(atlasAssets, true);
+
+			// SkeletonData
+			using (new SpineInspectorUtility.BoxScope()) {
+				EditorGUILayout.LabelField("SkeletonData", EditorStyles.boldLabel);
+				EditorGUILayout.PropertyField(skeletonJSON, new GUIContent(skeletonJSON.displayName, SpineEditorUtilities.Icons.spine));
+				EditorGUILayout.PropertyField(scale);
 			}
-			EditorGUILayout.LabelField("spine-tk2d", EditorStyles.boldLabel);
-			EditorGUILayout.PropertyField(spriteCollection, true);
-			#endif
-			EditorGUILayout.Space();
-			EditorGUILayout.PropertyField(skeletonJSON);
-			EditorGUILayout.PropertyField(scale);
-			EditorGUILayout.Space();
+
+			// Atlas
+			using (new SpineInspectorUtility.BoxScope()) {
+				EditorGUILayout.LabelField("Atlas", EditorStyles.boldLabel);
+				#if !SPINE_TK2D
+				EditorGUILayout.PropertyField(atlasAssets, true);
+				#else
+				using (new EditorGUI.DisabledGroupScope(spriteCollection.objectReferenceValue != null)) {
+					EditorGUILayout.PropertyField(atlasAssets, true);
+				}
+				EditorGUILayout.LabelField("spine-tk2d", EditorStyles.boldLabel);
+				EditorGUILayout.PropertyField(spriteCollection, true);
+				#endif
+			}
+
 			if (EditorGUI.EndChangeCheck()) {
 				if (serializedObject.ApplyModifiedProperties()) {
 					if (m_previewUtility != null) {
@@ -161,9 +173,18 @@ namespace Spine.Unity.Editor {
 			// If m_skeletonAnimation is lazy-instantiated elsewhere, this can cause contents to change between Layout and Repaint events, causing GUILayout control count errors.
 			InitPreview();
 			if (m_skeletonData != null) {
-				DrawAnimationStateInfo();
+				using (new SpineInspectorUtility.BoxScope()) {
+					EditorGUILayout.LabelField("Mix Settings", EditorStyles.boldLabel);
+					DrawAnimationStateInfo();
+					EditorGUILayout.Space();
+				}
+
+				EditorGUILayout.LabelField("Preview", EditorStyles.boldLabel);
 				DrawAnimationList();
+				EditorGUILayout.Space();
 				DrawSlotList();
+				EditorGUILayout.Space();
+
 				DrawUnityTools();
 			} else {
 				#if !SPINE_TK2D
@@ -181,7 +202,6 @@ namespace Spine.Unity.Editor {
 				// List warnings.
 				foreach (var line in warnings)
 					EditorGUILayout.LabelField(new GUIContent(line, SpineEditorUtilities.Icons.warning));
-				
 			}
 
 			if (!Application.isPlaying)
@@ -190,31 +210,33 @@ namespace Spine.Unity.Editor {
 
 		void DrawUnityTools () {
 			#if SPINE_SKELETON_ANIMATOR
-			isMecanimExpanded = EditorGUILayout.Foldout(isMecanimExpanded, new GUIContent("SkeletonAnimator", SpineEditorUtilities.Icons.unityIcon));
-			if (isMecanimExpanded) {
-				EditorGUI.indentLevel++;
-				EditorGUILayout.PropertyField(controller, new GUIContent("Controller", SpineEditorUtilities.Icons.controllerIcon));		
-				if (controller.objectReferenceValue == null) {
-					
-					// Generate Mecanim Controller Button
-					using (new GUILayout.HorizontalScope()) {
-						GUILayout.Space(EditorGUIUtility.labelWidth);
-						if (GUILayout.Button(new GUIContent("Generate Mecanim Controller"), GUILayout.Height(20)))
-							SkeletonBaker.GenerateMecanimAnimationClips(m_skeletonDataAsset);						
-					}
-					EditorGUILayout.HelpBox("SkeletonAnimator is the Mecanim alternative to SkeletonAnimation.\nIt is not required.", MessageType.Info);
+			using (new SpineInspectorUtility.BoxScope()) {
+				isMecanimExpanded = EditorGUILayout.Foldout(isMecanimExpanded, new GUIContent("SkeletonAnimator", SpineEditorUtilities.Icons.unityIcon));
+				if (isMecanimExpanded) {
+					EditorGUI.indentLevel++;
+					EditorGUILayout.PropertyField(controller, new GUIContent("Controller", SpineEditorUtilities.Icons.controllerIcon));		
+					if (controller.objectReferenceValue == null) {
 
-				} else {
-					
-					// Update AnimationClips button.
-					using (new GUILayout.HorizontalScope()) {
-						GUILayout.Space(EditorGUIUtility.labelWidth);
-						if (GUILayout.Button(new GUIContent("Force Update AnimationClips"), GUILayout.Height(20)))
-							SkeletonBaker.GenerateMecanimAnimationClips(m_skeletonDataAsset);				
-					}
+						// Generate Mecanim Controller Button
+						using (new GUILayout.HorizontalScope()) {
+							GUILayout.Space(EditorGUIUtility.labelWidth);
+							if (GUILayout.Button(new GUIContent("Generate Mecanim Controller"), GUILayout.Height(20)))
+								SkeletonBaker.GenerateMecanimAnimationClips(m_skeletonDataAsset);						
+						}
+						EditorGUILayout.HelpBox("SkeletonAnimator is the Mecanim alternative to SkeletonAnimation.\nIt is not required.", MessageType.Info);
 
+					} else {
+
+						// Update AnimationClips button.
+						using (new GUILayout.HorizontalScope()) {
+							GUILayout.Space(EditorGUIUtility.labelWidth);
+							if (GUILayout.Button(new GUIContent("Force Update AnimationClips"), GUILayout.Height(20)))
+								SkeletonBaker.GenerateMecanimAnimationClips(m_skeletonDataAsset);				
+						}
+
+					}
+					EditorGUI.indentLevel--;
 				}
-				EditorGUI.indentLevel--;
 			}
 			#endif
 
@@ -306,7 +328,7 @@ namespace Spine.Unity.Editor {
 				return;
 
 			EditorGUI.BeginChangeCheck();
-			EditorGUILayout.PropertyField(defaultMix);
+			SpineInspectorUtility.PropertyFieldWideLabel(defaultMix, DefaultMixLabel, 160);
 
 			var animations = new string[m_skeletonData.Animations.Count];
 			for (int i = 0; i < animations.Length; i++)
@@ -491,7 +513,7 @@ namespace Spine.Unity.Editor {
 					}
 
 					if (detectedNullAtlasEntry)
-						warnings.Add("AtlasAsset elements cannot be Null");
+						warnings.Add("AtlasAsset elements should not be null.");
 					else {
 						// Get requirements.
 						var missingPaths = SpineEditorUtilities.GetRequiredAtlasRegions(AssetDatabase.GetAssetPath((TextAsset)skeletonJSON.objectReferenceValue));

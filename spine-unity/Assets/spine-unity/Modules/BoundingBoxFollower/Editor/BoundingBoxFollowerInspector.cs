@@ -43,6 +43,8 @@ namespace Spine.Unity.Editor {
 		bool sceneRepaintRequired = false;
 		bool debugIsExpanded;
 
+		readonly GUIContent AddBoneFollowerLabel = new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone);
+
 		void OnEnable () {
 			skeletonRenderer = serializedObject.FindProperty("skeletonRenderer");
 			slotName = serializedObject.FindProperty("slotName");
@@ -53,7 +55,32 @@ namespace Spine.Unity.Editor {
 
 		public override void OnInspectorGUI () {
 			bool isInspectingPrefab = (PrefabUtility.GetPrefabType(target) == PrefabType.Prefab);
-			bool repaintEvent = Event.current.type == EventType.Repaint;
+
+			// Try to auto-assign SkeletonRenderer field.
+			if (skeletonRenderer.objectReferenceValue == null) {
+				var foundSkeletonRenderer = follower.GetComponentInParent<SkeletonRenderer>();
+				if (foundSkeletonRenderer != null)
+					Debug.Log("BoundingBoxFollower automatically assigned: " + foundSkeletonRenderer.gameObject.name);
+				else if (Event.current.type == EventType.Repaint)
+					Debug.Log("No Spine GameObject detected. Make sure to set this GameObject as a child of the Spine GameObject; or set BoundingBoxFollower's 'Skeleton Renderer' field in the inspector.");
+
+				skeletonRenderer.objectReferenceValue = foundSkeletonRenderer;
+				serializedObject.ApplyModifiedProperties();
+			}
+
+			var sr = skeletonRenderer.objectReferenceValue as SkeletonRenderer;
+			if (sr != null && sr.gameObject == follower.gameObject) {
+				using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
+					EditorGUILayout.HelpBox("It's ideal to add BoundingBoxFollower to a separate child GameObject of the Spine GameObject.", MessageType.Warning);
+
+					if (GUILayout.Button(new GUIContent("Move BoundingBoxFollower to new GameObject", SpineEditorUtilities.Icons.boundingBox), GUILayout.Height(50f))) {
+						AddBoundingBoxFollowerChild(sr, follower);
+						DestroyImmediate(follower);
+						return;
+					}
+				}
+				EditorGUILayout.Space();
+			}
 
 			EditorGUI.BeginChangeCheck();
 			EditorGUILayout.PropertyField(skeletonRenderer);
@@ -64,24 +91,26 @@ namespace Spine.Unity.Editor {
 					rebuildRequired = true;
 			}
 
-			EditorGUI.BeginChangeCheck();
-			EditorGUILayout.PropertyField(isTrigger);
-			bool triggerChanged = EditorGUI.EndChangeCheck();
+			using (new SpineInspectorUtility.LabelWidthScope(150f)) {
+				EditorGUI.BeginChangeCheck();
+				EditorGUILayout.PropertyField(isTrigger);
+				bool triggerChanged = EditorGUI.EndChangeCheck();
 
-			EditorGUI.BeginChangeCheck();
-			EditorGUILayout.PropertyField(clearStateOnDisable, new GUIContent(clearStateOnDisable.displayName, "Enable this if you are pooling your Spine GameObject"));
-			bool clearStateChanged = EditorGUI.EndChangeCheck();
+				EditorGUI.BeginChangeCheck();
+				EditorGUILayout.PropertyField(clearStateOnDisable, new GUIContent(clearStateOnDisable.displayName, "Enable this if you are pooling your Spine GameObject"));
+				bool clearStateChanged = EditorGUI.EndChangeCheck();
 
-			if (clearStateChanged || triggerChanged) {
-				serializedObject.ApplyModifiedProperties();
-				if (triggerChanged)
-					foreach (var col in follower.colliderTable.Values)
-						col.isTrigger = isTrigger.boolValue;
+				if (clearStateChanged || triggerChanged) {
+					serializedObject.ApplyModifiedProperties();
+					if (triggerChanged)
+						foreach (var col in follower.colliderTable.Values)
+							col.isTrigger = isTrigger.boolValue;
+				}
 			}
 
 			if (isInspectingPrefab) {
 				follower.colliderTable.Clear();
-				follower.attachmentNameTable.Clear();
+				follower.nameTable.Clear();
 				EditorGUILayout.HelpBox("BoundingBoxAttachments cannot be previewed in prefabs.", MessageType.Info);
 
 				// How do you prevent components from being saved into the prefab? No such HideFlag. DontSaveInEditor | DontSaveInBuild does not work. DestroyImmediate does not work.
@@ -89,15 +118,12 @@ namespace Spine.Unity.Editor {
 				if (collider != null) Debug.LogWarning("Found BoundingBoxFollower collider components in prefab. These are disposed and regenerated at runtime.");
 
 			} else {
-				using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
-					EditorGUI.indentLevel++;
-					debugIsExpanded = EditorGUILayout.Foldout(debugIsExpanded, "Debug Colliders");
-
-					if (debugIsExpanded) {
+				using (new SpineInspectorUtility.BoxScope()) {
+					if (debugIsExpanded = EditorGUILayout.Foldout(debugIsExpanded, "Debug Colliders")) {
 						EditorGUI.indentLevel++;
 						EditorGUILayout.LabelField(string.Format("Attachment Names ({0} PolygonCollider2D)", follower.colliderTable.Count));
 						EditorGUI.BeginChangeCheck();
-						foreach (var kp in follower.attachmentNameTable) {
+						foreach (var kp in follower.nameTable) {
 							string attachmentName = kp.Value;
 							var collider = follower.colliderTable[kp.Key];
 							bool isPlaceholder = attachmentName != kp.Key.Name;
@@ -106,23 +132,21 @@ namespace Spine.Unity.Editor {
 						sceneRepaintRequired |= EditorGUI.EndChangeCheck();
 						EditorGUI.indentLevel--;
 					}
-					EditorGUI.indentLevel--;
 				}
 
 			}
 
 			bool hasBoneFollower = follower.GetComponent<BoneFollower>() != null;
-			bool buttonDisabled = hasBoneFollower || follower.Slot == null;
-			using (new EditorGUI.DisabledGroupScope(buttonDisabled)) {
-				using (new EditorGUILayout.HorizontalScope()) {
-					EditorGUILayout.Space();
-					addBoneFollower |= GUILayout.Button(new GUIContent("Add Bone Follower", SpineEditorUtilities.Icons.bone), GUILayout.MaxWidth(300f), GUILayout.Height(40f));
+			if (!hasBoneFollower) {
+				bool buttonDisabled = follower.Slot == null;
+				using (new EditorGUI.DisabledGroupScope(buttonDisabled)) {
+					addBoneFollower |= SpineInspectorUtility.LargeCenteredButton(AddBoneFollowerLabel, true);
 					EditorGUILayout.Space();
 				}
-				EditorGUILayout.Space();
 			}
 
-			if (repaintEvent) {
+
+			if (Event.current.type == EventType.Repaint) {
 				if (addBoneFollower) {
 					var boneFollower = follower.gameObject.AddComponent<BoneFollower>();
 					boneFollower.boneName = follower.Slot.Data.BoneData.Name;
@@ -135,10 +159,36 @@ namespace Spine.Unity.Editor {
 				}
 
 				if (rebuildRequired) {
-					follower.HandleRebuild(null);
+					follower.Initialize();
 					rebuildRequired = false;
 				}
 			}
+		}
+
+		#region Menus
+		[MenuItem("CONTEXT/SkeletonRenderer/Add BoundingBoxFollower GameObject")]
+		static void AddBoundingBoxFollowerChild (MenuCommand command) {
+			AddBoundingBoxFollowerChild((SkeletonRenderer)command.context);
+		}
+		#endregion
+
+		static void AddBoundingBoxFollowerChild (SkeletonRenderer sr, BoundingBoxFollower original = null) {
+			var go = new GameObject("BoundingBoxFollower");
+			go.transform.SetParent(sr.transform, false);
+			var newFollower = go.AddComponent<BoundingBoxFollower>();
+
+			if (original != null) {
+				newFollower.slotName = original.slotName;
+				newFollower.isTrigger = original.isTrigger;
+				newFollower.clearStateOnDisable = original.clearStateOnDisable;
+			}
+
+			newFollower.skeletonRenderer = sr;
+			newFollower.Initialize();
+
+
+			Selection.activeGameObject = go;
+			EditorGUIUtility.PingObject(go);
 		}
 
 	}
