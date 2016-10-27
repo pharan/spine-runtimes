@@ -81,9 +81,24 @@ namespace Spine.Unity.Editor {
 		public class BoxScope : System.IDisposable {
 			readonly bool indent;
 
+			static GUIStyle boxScopeStyle;
+			public static GUIStyle BoxScopeStyle {
+				get {
+					if (boxScopeStyle == null) {
+						boxScopeStyle = new GUIStyle(EditorStyles.helpBox);
+						var p = boxScopeStyle.padding;
+						p.right += 6;
+						p.top += 1;
+						p.left += 3;
+					}
+
+					return boxScopeStyle;
+				}
+			}
+
 			public BoxScope (bool indent = true) {
 				this.indent = indent;
-				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+				EditorGUILayout.BeginVertical(BoxScopeStyle);
 				if (indent) EditorGUI.indentLevel++;
 			}
 				
@@ -142,8 +157,7 @@ namespace Spine.Unity.Editor {
 
 		#region Multi-Editing Helpers
 		public static bool TargetsUseSameData (SerializedObject so) {
-			bool multi = so.isEditingMultipleObjects;
-			if (multi) {
+			if (so.isEditingMultipleObjects) {
 				int n = so.targetObjects.Length;
 				var first = so.targetObjects[0] as ISkeletonComponent;
 				for (int i = 1; i < n; i++) {
@@ -181,8 +195,8 @@ namespace Spine.Unity.Editor {
 		#endregion
 
 		#region Sorting Layer Field Helpers
-		static readonly GUIContent SortingLayerLabel = new GUIContent("Sorting Layer");
-		static readonly GUIContent OrderInLayerLabel = new GUIContent("Order in Layer");
+		static readonly GUIContent SortingLayerLabel = new GUIContent("Sorting Layer", "MeshRenderer.sortingLayerID");
+		static readonly GUIContent OrderInLayerLabel = new GUIContent("Order in Layer", "MeshRenderer.sortingOrder");
 
 		static MethodInfo m_SortingLayerFieldMethod;
 		static MethodInfo SortingLayerFieldMethod {
