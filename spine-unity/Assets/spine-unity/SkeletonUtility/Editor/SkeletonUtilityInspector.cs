@@ -48,9 +48,14 @@ namespace Spine.Unity.Editor {
 		SkeletonRenderer skeletonRenderer;
 		Transform transform;
 		bool isPrefab;
+
 		Dictionary<Slot, List<Attachment>> attachmentTable = new Dictionary<Slot, List<Attachment>>();
 
+		GUIContent SpawnHierarchyButtonLabel = new GUIContent("Spawn Hierarchy", Icons.skeleton);
+		GUIContent SlotsRootLabel = new GUIContent("Slots", Icons.slotRoot);
 		static AnimBool showSlots = new AnimBool(false);
+		static bool showPaths = true;
+		static bool debugSkeleton = false;
 
 		void OnEnable () {
 			skeletonUtility = (SkeletonUtility)target;
@@ -93,11 +98,6 @@ namespace Spine.Unity.Editor {
 				}
 			}
 		}
-
-		GUIContent SpawnHierarchyButtonLabel = new GUIContent("Spawn Hierarchy", Icons.skeleton);
-		GUIContent SlotsRootLabel = new GUIContent("Slots", Icons.slotRoot);
-		static bool showPaths = true;
-		static bool debugSkeleton = false;
 
 		public override void OnInspectorGUI () {
 			bool requireRepaint = false;
@@ -153,8 +153,8 @@ namespace Spine.Unity.Editor {
 								foreach (var attachment in pair.Value) {
 									GUI.contentColor = slot.Attachment == attachment ? Color.white : Color.grey;
 									EditorGUI.indentLevel = baseIndent + 2;
-									bool isAttached = attachment == slot.Attachment;
 									var icon = (attachment is MeshAttachment) ? Icons.mesh : Icons.image;
+									bool isAttached = (attachment == slot.Attachment);
 									bool swap = EditorGUILayout.ToggleLeft(new GUIContent(attachment.Name, icon), attachment == slot.Attachment);
 									if (isAttached != swap) {
 										slot.Attachment = isAttached ? null : attachment;

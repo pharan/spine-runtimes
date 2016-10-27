@@ -412,16 +412,10 @@ namespace Spine.Unity.Editor {
 			if (m_skeletonAnimation == null || m_skeletonAnimation.skeleton == null) return;
 
 			EditorGUI.indentLevel++;
-
-			try {
-				showAttachments = EditorGUILayout.ToggleLeft("Show Attachments", showAttachments);
-			} catch {
-				return;
-			}
-
-			List<Attachment> slotAttachments = new List<Attachment>();
-			List<string> slotAttachmentNames = new List<string>();
-			List<string> defaultSkinAttachmentNames = new List<string>();
+			showAttachments = EditorGUILayout.ToggleLeft("Show Attachments", showAttachments);
+			var slotAttachments = new List<Attachment>();
+			var slotAttachmentNames = new List<string>();
+			var defaultSkinAttachmentNames = new List<string>();
 			var defaultSkin = m_skeletonData.Skins.Items[0];
 			Skin skin = m_skeletonAnimation.skeleton.Skin ?? defaultSkin;
 
@@ -742,37 +736,13 @@ namespace Spine.Unity.Editor {
 					foreach (var slot in m_skeletonAnimation.skeleton.Slots) {
 						var boundingBoxAttachment = slot.Attachment as BoundingBoxAttachment;
 						if (boundingBoxAttachment != null)
-							DrawBoundingBox (slot, boundingBoxAttachment);
+							SpineEditorUtilities.DrawBoundingBox(slot, boundingBoxAttachment);
 					}
 				}
 
 				go.GetComponent<Renderer>().enabled = false;
 			}
 				
-		}
-
-		static void DrawBoundingBox (Slot slot, BoundingBoxAttachment box) {
-			if (box.Vertices.Length <= 0) return; // Handle cases where user creates a BoundingBoxAttachment but doesn't actually define it.
-
-			var worldVerts = new float[box.Vertices.Length];
-			box.ComputeWorldVertices(slot, worldVerts);
-
-			Handles.color = Color.green;
-			Vector3 lastVert = Vector3.back;
-			Vector3 vert = Vector3.back;
-			Vector3 firstVert = new Vector3(worldVerts[0], worldVerts[1], -1);
-			for (int i = 0; i < worldVerts.Length; i += 2) {
-				vert.x = worldVerts[i];
-				vert.y = worldVerts[i + 1];
-
-				if (i > 0)
-					Handles.DrawLine(lastVert, vert);
-
-				lastVert = vert;
-			}
-
-			Handles.DrawLine(lastVert, firstVert);
-
 		}
 
 		void EditorUpdate () {

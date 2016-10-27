@@ -220,11 +220,11 @@ namespace Spine.Unity.Modules {
 	}
 
 	public static class SpriteAttachmentExtensions {
-		public static Attachment AttachUnitySprite (this Skeleton skeleton, string slotName, Sprite sprite, string shaderName = SpriteAttacher.DefaultPMAShader, bool applyPMA = true) {
+		public static RegionAttachment AttachUnitySprite (this Skeleton skeleton, string slotName, Sprite sprite, string shaderName = SpriteAttacher.DefaultPMAShader, bool applyPMA = true) {
 			return skeleton.AttachUnitySprite(slotName, sprite, Shader.Find(shaderName), applyPMA);
 		}
 
-		public static Attachment AddUnitySprite (this SkeletonData skeletonData, string slotName, Sprite sprite, string skinName = "", string shaderName = SpriteAttacher.DefaultPMAShader, bool applyPMA = true) {
+		public static RegionAttachment AddUnitySprite (this SkeletonData skeletonData, string slotName, Sprite sprite, string skinName = "", string shaderName = SpriteAttacher.DefaultPMAShader, bool applyPMA = true) {
 			return skeletonData.AddUnitySprite(slotName, sprite, skinName, Shader.Find(shaderName), applyPMA);
 		}
 
@@ -232,13 +232,13 @@ namespace Spine.Unity.Modules {
 			return sprite.ToRegionAttachment(Shader.Find(shaderName), applyPMA);
 		}
 
-		public static Attachment AttachUnitySprite (this Skeleton skeleton, string slotName, Sprite sprite, Shader shader, bool applyPMA) {
+		public static RegionAttachment AttachUnitySprite (this Skeleton skeleton, string slotName, Sprite sprite, Shader shader, bool applyPMA) {
 			var att = sprite.ToRegionAttachment(shader, applyPMA);
 			skeleton.FindSlot(slotName).Attachment = att;
 			return att;
 		}
 
-		public static Attachment AddUnitySprite (this SkeletonData skeletonData, string slotName, Sprite sprite, string skinName, Shader shader, bool applyPMA) {
+		public static RegionAttachment AddUnitySprite (this SkeletonData skeletonData, string slotName, Sprite sprite, string skinName, Shader shader, bool applyPMA) {
 			var att = sprite.ToRegionAttachment(shader, applyPMA);
 
 			var slotIndex = skeletonData.FindSlotIndex(slotName);

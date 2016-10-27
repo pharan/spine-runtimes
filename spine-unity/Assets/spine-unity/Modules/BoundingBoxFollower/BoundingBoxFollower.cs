@@ -122,7 +122,7 @@ namespace Spine.Unity {
 							Debug.Log("BoundingBoxFollower tried to follow a slot that contains non-boundingbox attachments: " + slotName);						
 
 						if (boundingBoxAttachment != null) {
-							var bbCollider = SkeletonUtility.AddBoundingBoxAsComponent(boundingBoxAttachment, gameObject, isTrigger);
+							var bbCollider = SkeletonUtility.AddBoundingBoxAsComponent(boundingBoxAttachment, slot, gameObject, isTrigger);
 							bbCollider.enabled = false;
 							bbCollider.hideFlags = HideFlags.NotEditable;
 							bbCollider.isTrigger = IsTrigger;

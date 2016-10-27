@@ -50,8 +50,8 @@ namespace Spine.Unity {
 		public SkeletonRendererDelegate OnRebuild;
 
 		public SkeletonDataAsset skeletonDataAsset;
-		public SkeletonDataAsset SkeletonDataAsset { get { return skeletonDataAsset; } }
-		public String initialSkinName;
+		public SkeletonDataAsset SkeletonDataAsset { get { return skeletonDataAsset; } } // ISkeletonComponent
+		public string initialSkinName;
 
 		#region Advanced
 		// Submesh Separation

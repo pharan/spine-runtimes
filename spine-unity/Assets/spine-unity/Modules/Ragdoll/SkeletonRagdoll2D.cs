@@ -399,7 +399,7 @@ namespace Spine.Unity.Modules {
 							if (!a.Name.ToLower().Contains(AttachmentNameMarker))
 								continue;
 
-							var bbCollider = SkeletonUtility.AddBoundingBoxAsComponent(bbAttachment, go, false);
+							var bbCollider = SkeletonUtility.AddBoundingBoxAsComponent(bbAttachment, s, go, false);
 							colliders.Add(bbCollider);
 						}
 					}

@@ -1451,6 +1451,29 @@ namespace Spine.Unity.Editor {
 //			Handles.DrawLine(p0, p1);
 //			Handles.DrawLine(p3, p2);
 		}
+
+		static public void DrawBoundingBox (Slot slot, BoundingBoxAttachment box) {
+			if (box.Vertices.Length <= 0) return; // Handle cases where user creates a BoundingBoxAttachment but doesn't actually define it.
+
+			var worldVerts = new float[box.Vertices.Length];
+			box.ComputeWorldVertices(slot, worldVerts);
+
+			Handles.color = Color.green;
+			Vector3 lastVert = Vector3.back;
+			Vector3 vert = Vector3.back;
+			Vector3 firstVert = new Vector3(worldVerts[0], worldVerts[1], -1);
+			for (int i = 0; i < worldVerts.Length; i += 2) {
+				vert.x = worldVerts[i];
+				vert.y = worldVerts[i + 1];
+
+				if (i > 0)
+					Handles.DrawLine(lastVert, vert);
+
+				lastVert = vert;
+			}
+
+			Handles.DrawLine(lastVert, firstVert);
+		}
 		#endregion
 
 		public static string GetPathSafeRegionName (AtlasRegion region) {

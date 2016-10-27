@@ -40,64 +40,37 @@ namespace Spine.Unity {
 	[ExecuteInEditMode]
 	public class SkeletonUtility : MonoBehaviour {
 	
+		#region BoundingBoxAttachment
 		public static PolygonCollider2D AddBoundingBox (Skeleton skeleton, string skinName, string slotName, string attachmentName, Transform parent, bool isTrigger = true) {
-			Skin skin;
-
-			if (skinName == "")
-				skinName = skeleton.Data.DefaultSkin.Name;
-
-			skin = skeleton.Data.FindSkin(skinName);
-
+			skinName = string.IsNullOrEmpty(skinName) ? skinName : skeleton.Data.DefaultSkin.Name;
+			Skin skin = skeleton.Data.FindSkin(skinName);
 			if (skin == null) {
 				Debug.LogError("Skin " + skinName + " not found!");
 				return null;
 			}
 
 			var attachment = skin.GetAttachment(skeleton.FindSlotIndex(slotName), attachmentName);
-			if (attachment is BoundingBoxAttachment) {
-				GameObject go = new GameObject("[BoundingBox]" + attachmentName);
-				go.transform.parent = parent;
-				go.transform.localPosition = Vector3.zero;
-				go.transform.localRotation = Quaternion.identity;
-				go.transform.localScale = Vector3.one;
-				var collider = go.AddComponent<PolygonCollider2D>();
-				collider.isTrigger = isTrigger;
-				var boundingBox = (BoundingBoxAttachment)attachment;
-				float[] floats = boundingBox.Vertices;
-				int floatCount = floats.Length;
-				int vertCount = floatCount / 2;
-
-				Vector2[] verts = new Vector2[vertCount];
-				int v = 0;
-				for (int i = 0; i < floatCount; i += 2, v++) {
-					verts[v].x = floats[i];
-					verts[v].y = floats[i + 1];
-				}
-
-				collider.SetPath(0, verts);
-				return collider;
+			var box = attachment as BoundingBoxAttachment;
+			if (box != null) {
+				var go = new GameObject("[BoundingBox]" + attachmentName);
+				var got = go.transform;
+				got.parent = parent;
+				got.localPosition = Vector3.zero;
+				got.localRotation = Quaternion.identity;
+				got.localScale = Vector3.one;
+				var slot = skeleton.FindSlot(slotName);
+				return AddBoundingBoxAsComponent(box, slot, go, isTrigger);
 			}
 
 			return null;
 		}
 
-		public static PolygonCollider2D AddBoundingBoxAsComponent (BoundingBoxAttachment boundingBox, GameObject gameObject, bool isTrigger = true) {
-			if (boundingBox == null)
-				return null;
-
+		public static PolygonCollider2D AddBoundingBoxAsComponent (BoundingBoxAttachment box, Slot slot, GameObject gameObject, bool isTrigger = true) {
+			if (box == null) return null;
+			if (box.IsWeighted()) Debug.LogWarning("UnityEngine.PolygonCollider2D does not support weighted or animated points. Collider will not be animated. Please remove weights and animations from the bounding box in Spine editor.");
+			var verts = box.GetWorldVertices(slot, null);
 			var collider = gameObject.AddComponent<PolygonCollider2D>();
 			collider.isTrigger = isTrigger;
-			float[] floats = boundingBox.Vertices;
-			int floatCount = floats.Length;
-			int vertCount = floatCount / 2;
-
-			Vector2[] verts = new Vector2[vertCount];
-			int v = 0;
-			for (int i = 0; i < floatCount; i += 2, v++) {
-				verts[v].x = floats[i];
-				verts[v].y = floats[i + 1];
-			}
-
 			collider.SetPath(0, verts);
 			return collider;
 		}
@@ -108,15 +81,16 @@ namespace Spine.Unity {
 
 			Bounds bounds = new Bounds();
 			bounds.center = new Vector3(floats[0], floats[1], 0);
-			for (int i = 2; i < floatCount; i += 2) {
+			for (int i = 2; i < floatCount; i += 2)
 				bounds.Encapsulate(new Vector3(floats[i], floats[i + 1], 0));
-			}
+
 			Vector3 size = bounds.size;
 			size.z = depth;
 			bounds.size = size;
 
 			return bounds;
 		}
+		#endregion
 
 		public delegate void SkeletonUtilityDelegate ();
 		public event SkeletonUtilityDelegate OnReset;
@@ -143,7 +117,6 @@ namespace Spine.Unity {
 		public List<SkeletonUtilityBone> utilityBones = new List<SkeletonUtilityBone>();
 		[System.NonSerialized]
 		public List<SkeletonUtilityConstraint> utilityConstraints = new List<SkeletonUtilityConstraint>();
-		//	Dictionary<Bone, SkeletonUtilityBone> utilityBoneTable;
 
 		protected bool hasTransformBones;
 		protected bool hasUtilityConstraints;

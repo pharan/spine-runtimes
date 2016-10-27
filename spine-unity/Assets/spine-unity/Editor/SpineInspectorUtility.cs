@@ -78,6 +78,11 @@ namespace Spine.Unity.Editor {
 			}
 		}
 
+		public class IndentScope : System.IDisposable {
+			public IndentScope () { EditorGUI.indentLevel++; }
+			public void Dispose () { EditorGUI.indentLevel--; }
+		}
+
 		public class BoxScope : System.IDisposable {
 			readonly bool indent;
 

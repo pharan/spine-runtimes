@@ -41,37 +41,28 @@ namespace Spine.Unity {
 	[ExecuteInEditMode]
 	[AddComponentMenu("Spine/SkeletonUtilityBone")]
 	public class SkeletonUtilityBone : MonoBehaviour {
-
 		public enum Mode {
 			Follow,
 			Override
 		}
 
-		[System.NonSerialized]
-		public bool valid;
-		[System.NonSerialized]
-		public SkeletonUtility skeletonUtility;
-		[System.NonSerialized]
-		public Bone bone;
+		#region Inspector
+		/// <summary>If a bone isn't set, boneName is used to find the bone.</summary>
+		public string boneName;
+		public Transform parentReference;
 		public Mode mode;
-		public bool zPosition = true;
-		public bool position;
-		public bool rotation;
-		public bool scale;
+		public bool position, rotation, scale, zPosition = true;
 		[Range(0f, 1f)]
 		public float overrideAlpha = 1;
+		#endregion
 
-		/// <summary>If a bone isn't set, boneName is used to find the bone.</summary>
-		public String boneName;
-		public Transform parentReference;
-
-		[System.NonSerialized]
-		public bool transformLerpComplete;
-
-		protected Transform cachedTransform;
-		protected Transform skeletonTransform;
-
-		private bool incompatibleTransformMode;
+		[System.NonSerialized] public SkeletonUtility skeletonUtility;
+		[System.NonSerialized] public Bone bone;
+		[System.NonSerialized] public bool transformLerpComplete;
+		[System.NonSerialized] public bool valid;
+		Transform cachedTransform;
+		Transform skeletonTransform;
+		bool incompatibleTransformMode;
 		public bool IncompatibleTransformMode {
 			get { return incompatibleTransformMode; }
 		}
@@ -115,14 +106,11 @@ namespace Spine.Unity {
 				return;
 			}
 
-			Spine.Skeleton skeleton = skeletonUtility.skeletonRenderer.skeleton;
+			var skeleton = skeletonUtility.skeletonRenderer.skeleton;
 
 			if (bone == null) {
-				if (string.IsNullOrEmpty(boneName))
-					return;
-
+				if (string.IsNullOrEmpty(boneName)) return;
 				bone = skeleton.FindBone(boneName);
-
 				if (bone == null) {
 					Debug.LogError("Bone not found: " + boneName, this);
 					return;
@@ -130,11 +118,10 @@ namespace Spine.Unity {
 			}
 
 			float skeletonFlipRotation = (skeleton.flipX ^ skeleton.flipY) ? -1f : 1f;
-
 			if (mode == Mode.Follow) {
 				if (position)
 					cachedTransform.localPosition = new Vector3(bone.x, bone.y, 0);
-
+				
 				if (rotation) {
 					if (!bone.data.transformMode.InheritsRotation()) {
 						cachedTransform.localRotation = Quaternion.Euler(0, 0, bone.AppliedRotation);
@@ -148,15 +135,15 @@ namespace Spine.Unity {
 					cachedTransform.localScale = new Vector3(bone.scaleX, bone.scaleY, 1f);//, bone.WorldSignX);
 					incompatibleTransformMode = BoneTransformModeIncompatible(bone);
 				}
-
 			} else if (mode == Mode.Override) {
 				if (transformLerpComplete)
 					return;
 
 				if (parentReference == null) {
 					if (position) {
-						bone.x = Mathf.Lerp(bone.x, cachedTransform.localPosition.x, overrideAlpha);
-						bone.y = Mathf.Lerp(bone.y, cachedTransform.localPosition.y, overrideAlpha);
+						Vector3 clp = cachedTransform.localPosition;
+						bone.x = Mathf.Lerp(bone.x, clp.x, overrideAlpha);
+						bone.y = Mathf.Lerp(bone.y, clp.y, overrideAlpha);
 					}
 
 					if (rotation) {
@@ -166,8 +153,9 @@ namespace Spine.Unity {
 					}
 
 					if (scale) {
-						bone.scaleX = Mathf.Lerp(bone.scaleX, cachedTransform.localScale.x, overrideAlpha);
-						bone.scaleY = Mathf.Lerp(bone.scaleY, cachedTransform.localScale.y, overrideAlpha);
+						Vector3 cls = cachedTransform.localScale;
+						bone.scaleX = Mathf.Lerp(bone.scaleX, cls.x, overrideAlpha);
+						bone.scaleY = Mathf.Lerp(bone.scaleY, cls.y, overrideAlpha);
 					}
 
 				} else {
@@ -188,8 +176,9 @@ namespace Spine.Unity {
 					}
 
 					if (scale) {
-						bone.scaleX = Mathf.Lerp(bone.scaleX, cachedTransform.localScale.x, overrideAlpha);
-						bone.scaleY = Mathf.Lerp(bone.scaleY, cachedTransform.localScale.y, overrideAlpha);
+						Vector3 cls = cachedTransform.localScale;
+						bone.scaleX = Mathf.Lerp(bone.scaleX, cls.x, overrideAlpha);
+						bone.scaleY = Mathf.Lerp(bone.scaleY, cls.y, overrideAlpha);
 					}
 
 					incompatibleTransformMode = BoneTransformModeIncompatible(bone);

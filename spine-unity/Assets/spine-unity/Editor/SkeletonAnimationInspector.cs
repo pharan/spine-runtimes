@@ -110,7 +110,7 @@ namespace Spine.Unity.Editor {
 					Spine.Animation animationToUse = skeletonAnimation.skeleton.Data.FindAnimation(animationName.stringValue);
 
 					if (!Application.isPlaying) {
-						if (animationToUse != null) animationToUse.Apply(skeletonAnimation.skeleton, 0f, 0f, false, null);
+						if (animationToUse != null) animationToUse.Apply(skeletonAnimation.skeleton, 0f, 0f, false, null, 1f, true, false);
 						skeletonAnimation.Update();
 						skeletonAnimation.LateUpdate();
 						requireRepaint = true;

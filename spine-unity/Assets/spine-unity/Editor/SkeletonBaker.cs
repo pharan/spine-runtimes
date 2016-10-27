@@ -410,7 +410,7 @@ namespace Spine.Unity.Editor {
 							offset.y = regionAttachment.Y;
 							rotation = regionAttachment.Rotation;
 							mesh = ExtractRegionAttachment(attachmentMeshName, regionAttachment, mesh);
-							material = ExtractMaterial(attachment);
+							material = attachment.GetMaterial();
 							unusedMeshNames.Remove(attachmentMeshName);
 							if (newPrefab || meshTable.ContainsKey(attachmentMeshName) == false)
 								AssetDatabase.AddObjectToAsset(mesh, prefab);
@@ -426,7 +426,7 @@ namespace Spine.Unity.Editor {
 							else
 								mesh = ExtractMeshAttachment(attachmentMeshName, meshAttachment, mesh);
 							
-							material = ExtractMaterial(attachment);
+							material = attachment.GetMaterial();
 							unusedMeshNames.Remove(attachmentMeshName);
 							if (newPrefab || meshTable.ContainsKey(attachmentMeshName) == false)
 								AssetDatabase.AddObjectToAsset(mesh, prefab);
@@ -532,21 +532,6 @@ namespace Spine.Unity.Editor {
 			Slot slot = new Slot(data, bone);
 			extractionSlot = slot;
 			return extractionSlot;
-		}
-
-		static Material ExtractMaterial (Attachment attachment) {
-			if (attachment == null || attachment is BoundingBoxAttachment)
-				return null;
-
-			if (attachment is RegionAttachment) {
-				var att = (RegionAttachment)attachment;
-				return (Material)((AtlasRegion)att.RendererObject).page.rendererObject;
-			} else if (attachment is MeshAttachment) {
-				var att = (MeshAttachment)attachment;
-				return (Material)((AtlasRegion)att.RendererObject).page.rendererObject;
-			} else {
-				return null;
-			}
 		}
 
 		static Mesh ExtractRegionAttachment (string name, RegionAttachment attachment, Mesh mesh = null) {
@@ -992,8 +977,7 @@ namespace Spine.Unity.Editor {
 			Skeleton skeleton = bone.Skeleton;
 			bool inheritRotation = bone.Data.TransformMode.InheritsRotation();
 
-			skeleton.SetToSetupPose();
-			animation.Apply(skeleton, 0, 0, true, null);
+			animation.Apply(skeleton, 0, 0, true, null, 1f, true, false);
 			skeleton.UpdateWorldTransform();
 			float duration = animation.Duration;
 
@@ -1022,7 +1006,7 @@ namespace Spine.Unity.Editor {
 				if (i == steps)
 					currentTime = duration;
 
-				animation.Apply(skeleton, lastTime, currentTime, true, null);
+				animation.Apply(skeleton, lastTime, currentTime, true, null, 1f, true, false);
 				skeleton.UpdateWorldTransform();
 
 				int pIndex = listIndex - 1;
