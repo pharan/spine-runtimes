@@ -123,11 +123,12 @@ namespace Spine.Unity.Editor {
 		protected virtual void DrawInspectorGUI (bool multi) {
 			bool valid = TargetIsValid;
 			var reloadWidth = GUILayout.Width(GUI.skin.label.CalcSize(new GUIContent(ReloadButtonLabel)).x + 20);
+			var reloadButtonStyle = EditorStyles.miniButtonRight;
 
 			if (multi) {
 				using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
 					SpineInspectorUtility.PropertyFieldFitLabel(skeletonDataAsset, SkeletonDataAssetLabel);
-					if (GUILayout.Button(ReloadButtonLabel, reloadWidth)) {
+					if (GUILayout.Button(ReloadButtonLabel, reloadButtonStyle, reloadWidth)) {
 						foreach (var c in targets) {
 							var component = c as SkeletonRenderer;
 							if (component.skeletonDataAsset != null) {
@@ -175,7 +176,7 @@ namespace Spine.Unity.Editor {
 				using (new EditorGUILayout.HorizontalScope(EditorStyles.helpBox)) {
 					SpineInspectorUtility.PropertyFieldFitLabel(skeletonDataAsset, SkeletonDataAssetLabel);
 					if (component.valid) {
-						if (GUILayout.Button(ReloadButtonLabel, reloadWidth)) {
+						if (GUILayout.Button(ReloadButtonLabel, reloadButtonStyle, reloadWidth)) {
 							if (component.skeletonDataAsset != null) {
 								foreach (AtlasAsset aa in component.skeletonDataAsset.atlasAssets) {
 									if (aa != null)
@@ -260,13 +261,32 @@ namespace Spine.Unity.Editor {
 		}
 
 		public static void SeparatorsField (SerializedProperty separatorSlotNames) {
+			bool multi = separatorSlotNames.serializedObject.isEditingMultipleObjects;
+			bool hasTerminalSlot = false;
+			if (!multi) {
+				var sr = separatorSlotNames.serializedObject.targetObject as ISkeletonComponent;
+				var skeleton = sr.Skeleton;
+				int lastSlot = skeleton.Slots.Count - 1;
+				if (skeleton != null) {					
+					for (int i = 0, n = separatorSlotNames.arraySize; i < n; i++) {
+						int index = skeleton.FindSlotIndex(separatorSlotNames.GetArrayElementAtIndex(i).stringValue);
+						if (index == 0 || index == lastSlot) {
+							hasTerminalSlot = true;
+							break;
+						}
+					}
+				}
+			}
+
+			string terminalSlotWarning = hasTerminalSlot ? " (!)" : "";
+
 			using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox)) {
 				const string SeparatorsDescription = "Stored names of slots where the Skeleton's render will be split into different batches. This is used by separate components that split the render into different MeshRenderers or GameObjects.";
 				if (separatorSlotNames.isExpanded) {
-					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName, SeparatorsDescription), true);
+					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + terminalSlotWarning, SeparatorsDescription), true);
 					EditorGUILayout.Space();
 				} else
-					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + string.Format(" [{0}]", separatorSlotNames.arraySize), SeparatorsDescription), true);
+					EditorGUILayout.PropertyField(separatorSlotNames, new GUIContent(separatorSlotNames.displayName + string.Format("{0} [{1}]", terminalSlotWarning, separatorSlotNames.arraySize), SeparatorsDescription), true);
 			}
 		}
 

@@ -40,6 +40,8 @@ namespace Spine.Unity.Editor {
 		protected SerializedProperty animationName, loop, timeScale, autoReset;
 		protected bool wasAnimationNameChanged;
 		protected bool requireRepaint;
+		readonly GUIContent LoopLabel = new GUIContent("Loop", "Whether or not .AnimationName should loop. This only applies to the initial animation specified in the inspector, or any subsequent Animations played through .AnimationName. Animations set through state.SetAnimation are unaffected.");
+		readonly GUIContent TimeScaleLabel = new GUIContent("Time Scale", "The rate at which animations progress over time. 1 means normal speed. 0.5 means 50% speed.");
 
 		protected override void OnEnable () {
 			base.OnEnable();
@@ -78,8 +80,8 @@ namespace Spine.Unity.Editor {
 				EditorGUI.BeginChangeCheck();
 				EditorGUILayout.PropertyField(animationName);
 				wasAnimationNameChanged |= EditorGUI.EndChangeCheck(); // Value used in the next update.
-				EditorGUILayout.PropertyField(loop);
-				EditorGUILayout.PropertyField(timeScale);
+				EditorGUILayout.PropertyField(loop, LoopLabel);
+				EditorGUILayout.PropertyField(timeScale, TimeScaleLabel);
 				var component = (SkeletonAnimation)target;
 				component.timeScale = Mathf.Max(component.timeScale, 0);
 			}

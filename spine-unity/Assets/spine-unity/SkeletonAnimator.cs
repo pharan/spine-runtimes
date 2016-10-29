@@ -40,36 +40,27 @@ namespace Spine.Unity {
 		public enum MixMode { AlwaysMix, MixNext, SpineStyle }
 		public MixMode[] layerMixModes = new MixMode[0];
 
-		#region Bone Callbacks
+		#region Bone Callbacks (ISkeletonAnimation)
+		protected event UpdateBonesDelegate _UpdateLocal;
+		protected event UpdateBonesDelegate _UpdateWorld;
+		protected event UpdateBonesDelegate _UpdateComplete;
+
 		/// <summary>
 		/// Occurs after the animations are applied and before world space values are resolved.
 		/// Use this callback when you want to set bone local values.</summary>
-		public event UpdateBonesDelegate UpdateLocal {
-			add { _UpdateLocal += value; }
-			remove { _UpdateLocal -= value; }
-		}
+		public event UpdateBonesDelegate UpdateLocal { add { _UpdateLocal += value; } remove { _UpdateLocal -= value; } }
 
 		/// <summary>
 		/// Occurs after the Skeleton's bone world space values are resolved (including all constraints).
 		/// Using this callback will cause the world space values to be solved an extra time.
 		/// Use this callback if want to use bone world space values, and also set bone local values.</summary>
-		public event UpdateBonesDelegate UpdateWorld {
-			add { _UpdateWorld += value; }
-			remove { _UpdateWorld -= value; }
-		}
+		public event UpdateBonesDelegate UpdateWorld { add { _UpdateWorld += value; } remove { _UpdateWorld -= value; } }
 
 		/// <summary>
 		/// Occurs after the Skeleton's bone world space values are resolved (including all constraints).
 		/// Use this callback if you want to use bone world space values, but don't intend to modify bone local values.
 		/// This callback can also be used when setting world position and the bone matrix.</summary>
-		public event UpdateBonesDelegate UpdateComplete {
-			add { _UpdateComplete += value; }
-			remove { _UpdateComplete -= value; }
-		}
-
-		protected event UpdateBonesDelegate _UpdateLocal;
-		protected event UpdateBonesDelegate _UpdateWorld;
-		protected event UpdateBonesDelegate _UpdateComplete;
+		public event UpdateBonesDelegate UpdateComplete { add { _UpdateComplete += value; } remove { _UpdateComplete -= value; } }
 		#endregion
 
 		readonly Dictionary<int, Spine.Animation> animationTable = new Dictionary<int, Spine.Animation>();
@@ -118,7 +109,7 @@ namespace Spine.Unity {
 					// Always use Mix instead of Applying the first non-zero weighted clip.
 					for (int c = 0; c < clipInfo.Length; c++) {
 						var info = clipInfo[c];	float weight = info.weight * layerWeight; if (weight == 0) continue;
-						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, stateInfo.normalizedTime * info.clip.length, stateInfo.loop, null, weight, false, false);
+						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, AnimationTime(stateInfo.normalizedTime, info.clip.length), stateInfo.loop, null, weight, false, false);
 					}
 					if (hasNext) {
 						for (int c = 0; c < nextClipInfo.Length; c++) {
@@ -131,14 +122,13 @@ namespace Spine.Unity {
 					int c = 0;
 					for (; c < clipInfo.Length; c++) {
 						var info = clipInfo[c]; float weight = info.weight * layerWeight; if (weight == 0) continue;
-						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, stateInfo.normalizedTime * info.clip.length, stateInfo.loop, null, 1f, false, false);
+						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, AnimationTime(stateInfo.normalizedTime, info.clip.length), stateInfo.loop, null, 1f, false, false);
 						break;
 					}
-
 					// Mix the rest
 					for (; c < clipInfo.Length; c++) {
 						var info = clipInfo[c]; float weight = info.weight * layerWeight; if (weight == 0) continue;
-						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, stateInfo.normalizedTime * info.clip.length, stateInfo.loop, null, weight, false, false);
+						animationTable[NameHashCode(info.clip)].Apply(skeleton, 0, AnimationTime(stateInfo.normalizedTime, info.clip.length), stateInfo.loop, null, weight, false, false);
 					}
 
 					c = 0;
@@ -151,7 +141,6 @@ namespace Spine.Unity {
 								break;
 							}
 						}
-
 						// Mix the rest
 						for (; c < nextClipInfo.Length; c++) {
 							var info = nextClipInfo[c];	float weight = info.weight * layerWeight; if (weight == 0) continue;
@@ -176,6 +165,12 @@ namespace Spine.Unity {
 				if (_UpdateComplete != null)
 					_UpdateComplete(this);	
 			}
+		}
+
+		static float AnimationTime (float normalizedTime, float clipLength) {
+			float time = normalizedTime * clipLength;
+			const float EndSnapEpsilon = 1f/30f; // Workaround for end-duration keys not being applied.
+			return (clipLength - time < EndSnapEpsilon) ? clipLength : time; // return a time snapped to clipLength;
 		}
 
 		int NameHashCode (AnimationClip clip) {
