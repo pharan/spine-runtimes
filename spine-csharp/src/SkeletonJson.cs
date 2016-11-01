@@ -282,7 +282,7 @@ namespace Spine {
 					var data = new EventData(entry.Key);
 					data.Int = GetInt(entryMap, "int", 0);
 					data.Float = GetFloat(entryMap, "float", 0);
-					data.String = GetString(entryMap, "string", null);
+					data.String = GetString(entryMap, "string", string.Empty);
 					skeletonData.events.Add(data);
 				}
 			}

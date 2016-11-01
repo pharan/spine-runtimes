@@ -274,7 +274,7 @@ namespace Spine {
 		/// 
 		/// Some information is ambiguous in the world transform, such as -1,-1 scale versus 180 rotation.
 		/// </summary>
-		public void UpdateAppliedTransform () {
+		internal void UpdateAppliedTransform () {
 			appliedValid = true;
 			Bone parent = this.parent;
 			if (parent == null) {

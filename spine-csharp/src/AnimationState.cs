@@ -34,14 +34,14 @@ using System.Text;
 
 namespace Spine {
 	public class AnimationState {
-		static Animation EmptyAnimation = new Animation("<empty>", new ExposedList<Timeline>(), 0);
+		private static Animation EmptyAnimation = new Animation("<empty>", new ExposedList<Timeline>(), 0);
 
 		private AnimationStateData data;
 		private readonly ExposedList<TrackEntry> tracks = new ExposedList<TrackEntry>();
 		private readonly HashSet<int> propertyIDs = new HashSet<int>();
 		private readonly ExposedList<Event> events = new ExposedList<Event>();
 		private readonly EventQueue queue;
-		bool animationsChanged;
+		private bool animationsChanged;
 		private float timeScale = 1;
 
 		public AnimationStateData Data { get { return data; } }
@@ -154,13 +154,13 @@ namespace Spine {
 			var events = this.events;
 
 			var tracksItems = tracks.Items;
-			for (int i = 0; i < tracks.Count; i++) {
+			for (int i = 0, m = tracks.Count; i < m; i++) {
 				TrackEntry current = tracksItems[i];
 				if (current == null || current.delay > 0) continue;
 
 				// Apply mixing from entries first.
 				float mix = current.alpha;
-				if (current.mixingFrom != null) mix = ApplyMixingFrom(current, skeleton, mix);
+				if (current.mixingFrom != null) mix *= ApplyMixingFrom(current, skeleton);
 
 				// Apply current entry.
 				float animationLast = current.animationLast, animationTime = current.AnimationTime;
@@ -168,22 +168,22 @@ namespace Spine {
 				var timelines = current.animation.timelines;
 				var timelinesItems = timelines.Items;
 				if (mix == 1) {
-					for (int ii = 0, n = timelineCount; ii < n; ii++)
+					for (int ii = 0; ii < timelineCount; ii++)
 						timelinesItems[ii].Apply(skeleton, animationLast, animationTime, events, 1, true, false);
 				} else {
 					bool firstFrame = current.timelinesRotation.Count == 0;
 					if (firstFrame) current.timelinesRotation.EnsureCapacity(timelines.Count << 1);
 					var timelinesRotation = current.timelinesRotation.Items;
 
-					var timelinesFirst = current.timelinesFirst;
-					for (int ii = 0, n = timelineCount; ii < n; ii++) {
+					var timelinesFirstItems = current.timelinesFirst.Items;
+					for (int ii = 0; ii < timelineCount; ii++) {
 						Timeline timeline = timelinesItems[ii];
 						var rotateTimeline = timeline as RotateTimeline;
 						if (rotateTimeline != null) {
-							ApplyRotateTimeline(rotateTimeline, skeleton, animationTime, mix, timelinesFirst.Items[ii], timelinesRotation, ii << 1,
+							ApplyRotateTimeline(rotateTimeline, skeleton, animationTime, mix, timelinesFirstItems[ii], timelinesRotation, ii << 1,
 								firstFrame);
 						} else {
-							timeline.Apply(skeleton, animationLast, animationTime, events, mix, timelinesFirst.Items[ii], false);
+							timeline.Apply(skeleton, animationLast, animationTime, events, mix, timelinesFirstItems[ii], false);
 						}
 					}
 				}
@@ -195,9 +195,9 @@ namespace Spine {
 			queue.Drain();
 		}
 
-		private float ApplyMixingFrom (TrackEntry entry, Skeleton skeleton, float alpha) {
+		private float ApplyMixingFrom (TrackEntry entry, Skeleton skeleton) {
 			TrackEntry from = entry.mixingFrom;
-			if (from.mixingFrom != null) ApplyMixingFrom(from, skeleton, alpha);
+			if (from.mixingFrom != null) ApplyMixingFrom(from, skeleton);
 
 			float mix;
 			if (entry.mixDuration == 0) // Single frame mix to undo mixingFrom changes.
@@ -205,18 +205,17 @@ namespace Spine {
 			else {
 				mix = entry.mixTime / entry.mixDuration;
 				if (mix > 1) mix = 1;
-				mix *= alpha;
 			}
 
 			var eventBuffer = mix < from.eventThreshold ? this.events : null;
 			bool attachments = mix < from.attachmentThreshold, drawOrder = mix < from.drawOrderThreshold;
 			float animationLast = from.animationLast, animationTime = from.AnimationTime;
-			alpha = from.alpha * (1 - mix);
 			var timelines = from.animation.timelines;
 			var timelinesItems = timelines.Items;
 			int timelineCount = timelines.Count;
 			var timelinesFirst = from.timelinesFirst;
 			var timelinesFirstItems = timelinesFirst.Items;
+			float alpha = from.alpha * entry.mixAlpha * (1 - mix);
 
 			bool firstFrame = entry.timelinesRotation.Count == 0;
 			if (firstFrame) entry.timelinesRotation.Capacity = timelineCount << 1;
@@ -226,7 +225,7 @@ namespace Spine {
 				Timeline timeline = timelinesItems[i];
 				bool setupPose = timelinesFirstItems[i];
 				var rotateTimeline = timeline as RotateTimeline;
-				if (rotateTimeline != null && alpha < 1) {
+				if (rotateTimeline != null) {
 					ApplyRotateTimeline(rotateTimeline, skeleton, animationTime, alpha, setupPose, timelinesRotation, i << 1, firstFrame);
 				} else {
 					if (setupPose) {
@@ -244,14 +243,13 @@ namespace Spine {
 			return mix;
 		}
 
-		static private void ApplyRotateTimeline (Timeline timeline, Skeleton skeleton, float time, float alpha, bool setupPose,
+		static private void ApplyRotateTimeline (RotateTimeline rotateTimeline, Skeleton skeleton, float time, float alpha, bool setupPose,
 			float[] timelinesRotation, int i, bool firstFrame) {
 			if (alpha == 1) {
-				timeline.Apply(skeleton, 0, time, null, 1, setupPose, false);
+				rotateTimeline.Apply(skeleton, 0, time, null, 1, setupPose, false);
 				return;
 			}
 
-			RotateTimeline rotateTimeline = (RotateTimeline)timeline;
 			float[] frames = rotateTimeline.frames;
 			if (time < frames[0]) return; // Time is before first frame.
 
@@ -341,10 +339,9 @@ namespace Spine {
 		}
 
 		/// <summary>
-		/// Removes all animations from all tracks, leaving skeletons in their last pose. 
+		/// Removes all animations from all tracks, leaving skeletons in their previous pose. 
 		/// It may be desired to use <see cref="AnimationState.SetEmptyAnimations(float)"/> to mix the skeletons back to the setup pose, 
-		/// rather than leaving them in their last pose.
-		/// </summary>
+		/// rather than leaving them in their previous pose.</summary>
 		public void ClearTracks () {
 			queue.drainDisabled = true;
 			for (int i = 0, n = tracks.Count; i < n; i++) {
@@ -356,10 +353,9 @@ namespace Spine {
 		}
 
 		/// <summary>
-		/// Removes all animations from the tracks, leaving skeletons in their last pose. 
+		/// Removes all animations from the tracks, leaving skeletons in their previous pose. 
 		/// It may be desired to use <see cref="AnimationState.SetEmptyAnimations(float)"/> to mix the skeletons back to the setup pose, 
-		/// rather than leaving them in their last pose.
-		/// </summary>
+		/// rather than leaving them in their previous pose.</summary>
 		public void ClearTrack (int trackIndex) {
 			if (trackIndex >= tracks.Count) return;
 			TrackEntry current = tracks.Items[trackIndex];
@@ -394,14 +390,15 @@ namespace Spine {
 
 				from.timelinesRotation.Clear();
 
-				// If not completely mixed in, set alpha so mixing out happens from current mix to zero.
-				if (from.mixingFrom != null) from.alpha *= Math.Min(from.mixTime / from.mixDuration, 1);
+				// If not completely mixed in, set mixAlpha so mixing out happens from current mix to zero.
+				if (from.mixingFrom != null) from.mixAlpha *= Math.Min(from.mixTime / from.mixDuration, 1);
 			}
 
 			queue.Start(current);
 		}
 
-		/// <seealso cref="SetAnimation(int, Animation, bool)" />
+
+		/// <summary>Sets an animation by name. <seealso cref="SetAnimation(int, Animation, bool)" /></summary>
 		public TrackEntry SetAnimation (int trackIndex, String animationName, bool loop) {
 			Animation animation = data.skeletonData.FindAnimation(animationName);
 			if (animation == null) throw new ArgumentException("Animation not found: " + animationName, "animationName");
@@ -409,10 +406,12 @@ namespace Spine {
 		}
 
 		/// <summary>Sets the current animation for a track, discarding any queued animations.</summary>
+		/// <param name="loop">If true, the animation will repeat.
+		/// If false, it will not, instead its last frame is applied if played beyond its duration.
+		/// In either case <see cref="TrackEntry.TrackEnd"/> determines when the track is cleared. </param>
 		/// <returns>
 		/// A track entry to allow further customization of animation playback. References to the track entry must not be kept 
-		/// after <see cref="AnimationState.Dispose"/>.
-		/// </returns>
+		/// after <see cref="AnimationState.Dispose"/>.</returns>
 		public TrackEntry SetAnimation (int trackIndex, Animation animation, bool loop) {
 			if (animation == null) throw new ArgumentNullException("animation", "animation cannot be null.");
 			TrackEntry current = ExpandToIndex(trackIndex);
@@ -434,6 +433,7 @@ namespace Spine {
 			return entry;
 		}
 
+		/// <summary>Queues an animation by name.</summary>
 		/// <seealso cref="AddAnimation(int, Animation, bool, float)" />
 		public TrackEntry AddAnimation (int trackIndex, String animationName, bool loop, float delay) {
 			Animation animation = data.skeletonData.FindAnimation(animationName);
@@ -441,7 +441,8 @@ namespace Spine {
 			return AddAnimation(trackIndex, animation, loop, delay);
 		}
 
-		/// <summary>Adds an animation to be played delay seconds after the current or last queued animation.</summary>
+		/// <summary>Adds an animation to be played delay seconds after the current or last queued animation
+		/// for a track. If the track is empty, it is equivalent to calling <see cref="SetAnimation"/>.</summary>
 		/// <param name="delay">
 		/// Seconds to begin this animation after the start of the previous animation. May be &lt;= 0 to use the animation
 		/// duration of the previous track minus any mix duration plus the negative delay.
@@ -547,6 +548,7 @@ namespace Spine {
 				timeScale = 1,
 
 				alpha = 1,
+				mixAlpha = 1,
 				mixTime = 0,
 				mixDuration = (last == null) ? 0 : data.GetMix(last.animation, animation),
 			};
@@ -566,7 +568,7 @@ namespace Spine {
 
 			var propertyIDs = this.propertyIDs;
 
-			// Compute timelinesFirst from lowest to highest track entries.
+			// Set timelinesFirst for all entries, from lowest track to highest.
 			int i = 0, n = tracks.Count;
 			propertyIDs.Clear();
 			for (; i < n; i++) { // Find first non-null entry.
@@ -594,8 +596,9 @@ namespace Spine {
 			int n = timelines.Count;
 			entry.timelinesFirst.EnsureCapacity(n); // entry.timelinesFirst.setSize(n);
 			var usage = entry.timelinesFirst.Items;
+			var timelinesItems = timelines.Items;
 			for (int i = 0; i < n; i++) {
-				propertyIDs.Add(timelines.Items[i].PropertyId);
+				propertyIDs.Add(timelinesItems[i].PropertyId);
 				usage[i] = true;
 			}
 		}
@@ -617,7 +620,7 @@ namespace Spine {
 				usage[i] = propertyIDs.Add(timelinesItems[i].PropertyId);
 		}
 
-		/// <returns>The track entry for the animation currently playing on the track, or null.</returns>
+		/// <returns>The track entry for the animation currently playing on the track, or null if no animation is currently playing.</returns>
 		public TrackEntry GetCurrent (int trackIndex) {
 			return (trackIndex >= tracks.Count) ? null : tracks.Items[trackIndex];
 		}
@@ -652,12 +655,18 @@ namespace Spine {
 		internal float eventThreshold, attachmentThreshold, drawOrderThreshold;
 		internal float animationStart, animationEnd, animationLast, nextAnimationLast;
 		internal float delay, trackTime, trackLast, nextTrackLast, trackEnd, timeScale = 1f;
-		internal float alpha, mixTime, mixDuration;
+		internal float alpha, mixTime, mixDuration, mixAlpha;
 		internal readonly ExposedList<bool> timelinesFirst = new ExposedList<bool>(), timelinesLast = new ExposedList<bool>();
 		internal readonly ExposedList<float> timelinesRotation = new ExposedList<float>();
 
+		/// <summary>The index of the track where this entry is either current or queued.</summary>
 		public int TrackIndex { get { return trackIndex; } }
+
+		/// <summary>The animation to apply for this track entry.</summary>
 		public Animation Animation { get { return animation; } }
+
+		/// <summary>
+		/// If true, the animation will repeat. If false, it will not, instead its last frame is applied if played beyond its duration.</summary>
 		public bool Loop { get { return loop; } set { loop = value; } }
 
 		///<summary>
@@ -675,10 +684,10 @@ namespace Spine {
 		/// The track time in seconds when this animation will be removed from the track. Defaults to the animation duration for 
 		/// non-looping animations and to <see cref="int.MaxValue"/> for looping animations. If the track end time is reached and no 
 		/// other animations are queued for playback, and mixing from any previous animations is complete, then the track is cleared, 
-		/// leaving skeletons in their last pose.
+		/// leaving skeletons in their previous pose.
 		/// 
 		/// It may be desired to use <see cref="AnimationState.AddEmptyAnimation(int, float, float)"/> to mix the skeletons back to the 
-		/// setup pose, rather than leaving them in their last pose.
+		/// setup pose, rather than leaving them in their previous pose.
 		/// </summary>
 		public float TrackEnd { get { return trackEnd; } set { trackEnd = value; } }
 
@@ -791,6 +800,18 @@ namespace Spine {
 		internal void OnDispose () { if (Dispose != null) Dispose(this); }
 		internal void OnComplete () { if (Complete != null) Complete(this); }
 		internal void OnEvent (Event e) { if (Event != null) Event(this, e); }
+
+		/// <summary>
+		/// Resets the rotation directions for mixing this entry's rotate timelines. This can be useful to avoid bones rotating the 
+		/// long way around when using <see cref="alpha"/> and starting animations on other tracks. 
+		/// 
+		/// Mixing involves finding a rotation between two others, which has two possible solutions: the short way or the long way around. 
+		/// The two rotations likely change over time, so which direction is the short or long way also changes. 
+		/// If the short way was always chosen, bones would flip to the other side when that direction became the long way.
+		/// TrackEntry chooses the short way the first time it is applied and remembers that direction.</summary>
+		public void ResetRotationDirections () {
+			timelinesRotation.Clear();
+		}
 
 		override public String ToString () {
 			return animation == null ? "<none>" : animation.name;

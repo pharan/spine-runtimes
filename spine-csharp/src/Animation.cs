@@ -114,7 +114,7 @@ namespace Spine {
 	public interface Timeline {
 		/// <summary>Sets the value(s) for the specified time.</summary>
 		/// <param name="events">Any triggered events are added. May be null.</param>
-		/// <param name="setupPose">If true, the timeline is mixed with the setup pose, else it is mixed with the current pose. Passing true when alpha is 1 is slightly more efficient.</param>
+		/// <param name="setupPose">True when the timeline is mixed with the setup pose, false when it is mixed with the current pose. Passing true when alpha is 1 is slightly more efficient.</param>
 		/// <param name="mixingOut">True when mixing over time toward the setup or current pose, false when mixing toward the keyed pose.
 		/// Used for timelines with instant transitions, eg draw order, attachment visibility, scale sign.</param>
 		void Apply (Skeleton skeleton, float lastTime, float time, ExposedList<Event> events, float alpha, bool setupPose, bool mixingOut);

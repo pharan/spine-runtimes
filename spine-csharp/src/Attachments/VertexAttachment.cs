@@ -50,6 +50,11 @@ namespace Spine {
 			ComputeWorldVertices(slot, 0, worldVerticesLength, worldVertices, 0);
 		}
 
+		/// <summary>Transforms local vertices to world coordinates.</summary>
+		/// <param name="start">The index of the first <see cref="Vertices"/> value to transform. Each vertex has 2 values, x and y.</param>
+		/// <param name="count">The number of world vertex values to output. Must be less than or equal to <see cref="WorldVerticesLength"/> - start.</param>
+		/// <param name="worldVertices">The output world vertices. Must have a length greater than or equal to <paramref name="offset"/> + <paramref name="count"/>.</param>
+		/// <param name="offset">The <paramref name="worldVertices"/> index to begin writing values.</param>
 		public void ComputeWorldVertices (Slot slot, int start, int count, float[] worldVertices, int offset) {
 			count += offset;
 			Skeleton skeleton = slot.Skeleton;
