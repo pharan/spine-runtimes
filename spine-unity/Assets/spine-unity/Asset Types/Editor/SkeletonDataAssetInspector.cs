@@ -40,6 +40,8 @@ using UnityEngine;
 using Spine;
 
 namespace Spine.Unity.Editor {
+	using Event = UnityEngine.Event;
+
 	[CustomEditor(typeof(SkeletonDataAsset))]
 	public class SkeletonDataAssetInspector : UnityEditor.Editor {
 		static bool showAnimationStateData = true;
@@ -123,9 +125,9 @@ namespace Spine.Unity.Editor {
 			// Lazy initialization
 			{ 
 				// Accessing EditorStyles values in OnEnable during a recompile causes UnityEditor to throw null exceptions. (Unity 5.3.5)
-				idlePlayButtonStyle = idlePlayButtonStyle ?? new GUIStyle(EditorStyles.toolbarButton);
+				idlePlayButtonStyle = idlePlayButtonStyle ?? new GUIStyle(EditorStyles.miniButton);
 				if (activePlayButtonStyle == null) {
-					activePlayButtonStyle = new GUIStyle(EditorStyles.toolbarButton);
+					activePlayButtonStyle = new GUIStyle(idlePlayButtonStyle);
 					activePlayButtonStyle.normal.textColor = Color.red;
 				}
 			}
@@ -141,6 +143,17 @@ namespace Spine.Unity.Editor {
 				EditorGUILayout.LabelField("SkeletonData", EditorStyles.boldLabel);
 				EditorGUILayout.PropertyField(skeletonJSON, new GUIContent(skeletonJSON.displayName, SpineEditorUtilities.Icons.spine));
 				EditorGUILayout.PropertyField(scale);
+
+//				if (m_skeletonData != null) {
+//					var sd = m_skeletonData;
+//					using (new GUILayout.HorizontalScope()) {
+//						GUILayout.Space(15f);
+//						GUILayout.Label(
+//							string.Format("{8} - {0} {1}\nBones: {2}\tConstraints: {5} IK + {6} Path + {7} Transform\nSlots: {3}\t\tSkins: {4}\n",
+//								sd.Version, string.IsNullOrEmpty(sd.Version) ? "" : "export", sd.Bones.Count, sd.Slots.Count, sd.Skins.Count, sd.IkConstraints.Count, sd.PathConstraints.Count, sd.TransformConstraints.Count, skeletonJSON.objectReferenceValue.name),
+//							SpineInspectorUtility.GrayMiniLabel);
+//					}
+//				}
 			}
 
 			// Atlas
@@ -173,6 +186,7 @@ namespace Spine.Unity.Editor {
 			// If m_skeletonAnimation is lazy-instantiated elsewhere, this can cause contents to change between Layout and Repaint events, causing GUILayout control count errors.
 			InitPreview();
 			if (m_skeletonData != null) {
+				
 				using (new SpineInspectorUtility.BoxScope()) {
 					EditorGUILayout.LabelField("Mix Settings", EditorStyles.boldLabel);
 					DrawAnimationStateInfo();
@@ -369,7 +383,7 @@ namespace Spine.Unity.Editor {
 		}
 
 		void DrawAnimationList () {
-			showAnimationList = EditorGUILayout.Foldout(showAnimationList, new GUIContent("Animations", SpineEditorUtilities.Icons.animationRoot));
+			showAnimationList = EditorGUILayout.Foldout(showAnimationList, new GUIContent(string.Format("Animations [{0}]", m_skeletonData.Animations.Count), SpineEditorUtilities.Icons.animationRoot));
 			if (!showAnimationList)
 				return;
 
@@ -526,11 +540,10 @@ namespace Spine.Unity.Editor {
 						
 					}
 					#else
-					if (spriteCollection.objectReferenceValue == null) {
+					if (spriteCollection.objectReferenceValue == null)
 						warnings.Add("SkeletonDataAsset requires tk2DSpriteCollectionData.");
-					} else {
+					else
 						warnings.Add("Your sprite collection may have missing images.");
-					}
 					#endif
 				}
 			}
@@ -569,12 +582,10 @@ namespace Spine.Unity.Editor {
 			foreach (Timeline t in a.Timelines) {
 				if (t.GetType() == typeof(EventTimeline)) {
 					var et = (EventTimeline)t;
-
 					for (int i = 0; i < et.Events.Length; i++) {
 						m_animEvents.Add(et.Events[i]);
 						m_animEventFrames.Add(et.Frames[i]);
 					}
-
 				}
 			}
 
@@ -645,7 +656,7 @@ namespace Spine.Unity.Editor {
 		public override void OnInteractivePreviewGUI (Rect r, GUIStyle background) {
 			this.InitPreview();
 
-			if (UnityEngine.Event.current.type == EventType.Repaint) {
+			if (Event.current.type == EventType.Repaint) {
 				if (m_requireRefresh) {
 					this.m_previewUtility.BeginPreview(r, background);
 					this.DoRenderPreview(true);
@@ -805,10 +816,10 @@ namespace Spine.Unity.Editor {
 			if (t != null) {
 				int loopCount = (int)(t.TrackTime / t.TrackEnd);
 				float currentTime = t.TrackTime - (t.TrackEnd * loopCount);
-
 				float normalizedTime = currentTime / t.Animation.Duration;
+				float wrappedTime = normalizedTime % 1;
 
-				lineRect.x = barRect.x + (width * normalizedTime) - 0.5f;
+				lineRect.x = barRect.x + (width * wrappedTime) - 0.5f;
 				lineRect.width = 2;
 
 				GUI.color = Color.red;
@@ -816,34 +827,32 @@ namespace Spine.Unity.Editor {
 				GUI.color = Color.white;
 
 				for (int i = 0; i < m_animEvents.Count; i++) {
-					// MITCH: left todo: Tooltip
-					//Spine.Event spev = animEvents[i];
-
 					float fr = m_animEventFrames[i];
 					var evRect = new Rect(barRect);
-					evRect.x = Mathf.Clamp(((fr / t.Animation.Duration) * width) - (SpineEditorUtilities.Icons._event.width / 2), barRect.x, float.MaxValue);
-					evRect.width = SpineEditorUtilities.Icons._event.width;
-					evRect.height = SpineEditorUtilities.Icons._event.height;
-					evRect.y += SpineEditorUtilities.Icons._event.height;
-					GUI.DrawTexture(evRect, SpineEditorUtilities.Icons._event);
+					evRect.x = Mathf.Clamp(((fr / t.Animation.Duration) * width) - (SpineEditorUtilities.Icons.userEvent.width / 2), barRect.x, float.MaxValue);
+					evRect.width = SpineEditorUtilities.Icons.userEvent.width;
+					evRect.height = SpineEditorUtilities.Icons.userEvent.height;
+					evRect.y += SpineEditorUtilities.Icons.userEvent.height;
+					GUI.DrawTexture(evRect, SpineEditorUtilities.Icons.userEvent);
 
-					// MITCH: left todo:  Tooltip
-//					UnityEngine.Event ev = UnityEngine.Event.current;
-//					if (ev.isMouse) {
-//						if (evRect.Contains(ev.mousePosition)) {
-//							Rect tooltipRect = new Rect(evRect);
-//							tooltipRect.width = 500;
-//							tooltipRect.y -= 4;
-//							tooltipRect.x += 4;
-//							GUI.Label(tooltipRect, spev.Data.Name);
-//						}
-//					}
+					Event ev = Event.current;
+					if (ev.type == EventType.Repaint) {
+						if (evRect.Contains(ev.mousePosition)) {
+							Rect tooltipRect = new Rect(evRect);
+							GUIStyle tooltipStyle = EditorStyles.helpBox;
+							tooltipRect.width = tooltipStyle.CalcSize(new GUIContent(m_animEvents[i].Data.Name)).x;
+							tooltipRect.y -= 4;
+							tooltipRect.x += 4;
+							GUI.Label(tooltipRect,  m_animEvents[i].Data.Name, tooltipStyle);
+							GUI.tooltip = m_animEvents[i].Data.Name;
+						}
+					}
 				}
 			}
 		}
 
 		void MouseScroll (Rect position) {
-			UnityEngine.Event current = UnityEngine.Event.current;
+			Event current = Event.current;
 			int controlID = GUIUtility.GetControlID(SliderHash, FocusType.Passive);
 			switch (current.GetTypeForControl(controlID)) {
 			case EventType.ScrollWheel:
@@ -904,46 +913,36 @@ namespace Spine.Unity.Editor {
 		}
 
 		public override void OnPreviewSettings () {
+			const float SliderWidth = 100;
 			if (!m_initialized) {
-				GUILayout.HorizontalSlider(0, 0, 2, GUILayout.MaxWidth(64));
+				GUILayout.HorizontalSlider(0, 0, 2, GUILayout.MaxWidth(SliderWidth));
 			} else {
-				float speed = GUILayout.HorizontalSlider(m_skeletonAnimation.timeScale, 0, 2, GUILayout.MaxWidth(64));
+				float speed = GUILayout.HorizontalSlider(m_skeletonAnimation.timeScale, 0, 2, GUILayout.MaxWidth(SliderWidth));
 
-				//snap to nearest 0.25
-				float y = speed / 0.25f;
+				const float SliderSnap = 0.25f;
+				float y = speed / SliderSnap;
 				int q = Mathf.RoundToInt(y);
-				speed = q * 0.25f;
+				speed = q * SliderSnap;
 
 				m_skeletonAnimation.timeScale = speed;
 			}
 		}
 
-		// MITCH: left todo: Fix first-import error
-		// MITCH: left todo: Update preview without thumbnail
+
 		public override Texture2D RenderStaticPreview (string assetPath, UnityEngine.Object[] subAssets, int width, int height) {
 			var tex = new Texture2D(width, height, TextureFormat.ARGB32, false);
 
 			this.InitPreview();
-
 			if (this.m_previewUtility.m_Camera == null)
 				return null;
 
 			m_requireRefresh = true;
 			this.DoRenderPreview(false);
 			AdjustCameraGoals(false);
-
 			this.m_previewUtility.m_Camera.orthographicSize = m_orthoGoal / 2;
 			this.m_previewUtility.m_Camera.transform.position = m_posGoal;
 			this.m_previewUtility.BeginStaticPreview(new Rect(0, 0, width, height));
 			this.DoRenderPreview(false);
-
-			//MITCH: left todo:  Figure out why this is throwing errors on first attempt
-			//		if(m_previewUtility != null){
-			//			Handles.SetCamera(this.m_previewUtility.m_Camera);
-			//			Handles.BeginGUI();
-			//			GUI.DrawTexture(new Rect(40,60,width,height), SpineEditorUtilities.Icons.spine, ScaleMode.StretchToFill);
-			//			Handles.EndGUI();
-			//		}
 			tex = this.m_previewUtility.EndStaticPreview();
 			return tex;
 		}
@@ -960,11 +959,9 @@ namespace Spine.Unity.Editor {
 
 		void SetSkin (object o) {
 			Skin skin = (Skin)o;
-
 			m_skeletonAnimation.initialSkinName = skin.Name;
 			m_skeletonAnimation.Initialize(true);
 			m_requireRefresh = true;
-
 			EditorPrefs.SetString(m_skeletonDataAssetGUID + "_lastSkin", skin.Name);
 		}
 		#endregion

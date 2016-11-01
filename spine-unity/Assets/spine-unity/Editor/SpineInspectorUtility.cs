@@ -68,6 +68,17 @@ namespace Spine.Unity.Editor {
 		}
 
 		#region Layout Scopes
+		static GUIStyle grayMiniLabel;
+		public static GUIStyle GrayMiniLabel {
+			get {
+				if (grayMiniLabel == null) {
+					grayMiniLabel = new GUIStyle(EditorStyles.centeredGreyMiniLabel);
+					grayMiniLabel.alignment = TextAnchor.UpperLeft;
+				}
+				return grayMiniLabel;
+			}
+		}
+
 		public class LabelWidthScope : System.IDisposable {
 			public LabelWidthScope (float minimumLabelWidth = 190f) {
 				EditorGUIUtility.labelWidth = minimumLabelWidth;

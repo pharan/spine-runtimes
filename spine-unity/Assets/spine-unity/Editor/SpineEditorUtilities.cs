@@ -67,7 +67,7 @@ namespace Spine.Unity.Editor {
 			public static Texture2D animation;
 			public static Texture2D animationRoot;
 			public static Texture2D spine;
-			public static Texture2D _event;
+			public static Texture2D userEvent;
 			public static Texture2D constraintNib;
 			public static Texture2D warning;
 			public static Texture2D skeletonUtility;
@@ -125,7 +125,7 @@ namespace Spine.Unity.Editor {
 				animation = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-animation.png");
 				animationRoot = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-animationRoot.png");
 				spine = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-spine.png");
-				_event = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-event.png");
+				userEvent = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-event.png");
 				constraintNib = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-constraintNib.png");
 				warning = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-warning.png");
 				skeletonUtility = (Texture2D)AssetDatabase.LoadMainAssetAtPath(SpineEditorUtilities.editorGUIPath + "/icon-skeletonUtility.png");
@@ -148,7 +148,6 @@ namespace Spine.Unity.Editor {
 		/// Unity can mistakenly unload assets whose references are only on the stack.
 		/// This leads to MissingReferenceException and other errors.
 		static readonly List<ScriptableObject> protectFromStackGarbageCollection = new List<ScriptableObject>();
-
 		static HashSet<string> assetsImportedInWrongState;
 		static Dictionary<int, GameObject> skeletonRendererTable;
 		static Dictionary<int, SkeletonUtilityBone> skeletonUtilityBoneTable;

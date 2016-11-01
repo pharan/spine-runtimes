@@ -160,18 +160,25 @@ namespace Spine.Unity.Editor {
 			EditorGUILayout.Space();
 
 			using (new GUILayout.HorizontalScope()) {
+				EditorGUILayout.Space();
 				using (new EditorGUI.DisabledGroupScope(multiObject || !utilityBone.valid || utilityBone.bone == null || utilityBone.bone.Children.Count == 0)) {
-					if (GUILayout.Button(new GUIContent("Add Child", SpineEditorUtilities.Icons.bone), GUILayout.Width(150), GUILayout.Height(24)))
+					if (GUILayout.Button(new GUIContent("Add Child", SpineEditorUtilities.Icons.bone), GUILayout.MinWidth(120), GUILayout.Height(24)))
 						BoneSelectorContextMenu("", utilityBone.bone.Children, "<Recursively>", SpawnChildBoneSelected);
 				}
 				using (new EditorGUI.DisabledGroupScope(multiObject || !utilityBone.valid || utilityBone.bone == null || containsOverrides)) {
-					if (GUILayout.Button(new GUIContent("Add Override", SpineEditorUtilities.Icons.poseBones), GUILayout.Width(150), GUILayout.Height(24)))
+					if (GUILayout.Button(new GUIContent("Add Override", SpineEditorUtilities.Icons.poseBones), GUILayout.MinWidth(120), GUILayout.Height(24)))
 						SpawnOverride();
 				}
+				EditorGUILayout.Space();
+			}
+			EditorGUILayout.Space();
+			using (new GUILayout.HorizontalScope()) {
+				EditorGUILayout.Space();
 				using (new EditorGUI.DisabledGroupScope(multiObject || !utilityBone.valid || !canCreateHingeChain)) {
 					if (GUILayout.Button(new GUIContent("Create Hinge Chain", SpineEditorUtilities.Icons.hingeChain), GUILayout.Width(150), GUILayout.Height(24)))
 						CreateHingeChain();
 				}
+				EditorGUILayout.Space();
 			}
 
 			using (new EditorGUI.DisabledGroupScope(multiObject || boundingBoxTable.Count == 0)) {

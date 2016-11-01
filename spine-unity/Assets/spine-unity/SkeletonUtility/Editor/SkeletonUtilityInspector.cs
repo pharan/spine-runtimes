@@ -132,6 +132,9 @@ namespace Spine.Unity.Editor {
 					skeleton.FlipY = EditorGUILayout.ToggleLeft("skeleton.FlipY", skeleton.FlipY);
 					requireRepaint |= EditorGUI.EndChangeCheck();
 
+					foreach (var t in skeleton.IkConstraints)
+						EditorGUILayout.LabelField(t.Data.Name + " " + t.Mix + " " + t.Target.Data.Name);
+
 					showSlots.target = EditorGUILayout.Foldout(showSlots.target, SlotsRootLabel);
 					if (showSlots.faded > 0) {
 						using (new EditorGUILayout.FadeGroupScope(showSlots.faded)) {
@@ -165,6 +168,8 @@ namespace Spine.Unity.Editor {
 							}
 						}
 					}
+
+
 				}
 
 				if (showSlots.isAnimating)

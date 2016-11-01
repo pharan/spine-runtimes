@@ -61,8 +61,6 @@ namespace Spine {
 			this.queue = new EventQueue(this, HandleAnimationsChanged);
 		}
 
-		//readonly List<Animation> animationsToRemove = new List<Animation>();
-
 		void HandleAnimationsChanged () {
 			this.animationsChanged = true;
 		}
@@ -102,7 +100,6 @@ namespace Spine {
 							next.mixTime += currentDelta;
 							next = next.mixingFrom;
 						}
-//						if (next.mixingFrom != null) next.mixTime += currentDelta;
 						continue;
 					}
 					UpdateMixingFrom(current, delta, true);
@@ -153,11 +150,6 @@ namespace Spine {
 		public void Apply (Skeleton skeleton) {
 			if (skeleton == null) throw new ArgumentNullException("skeleton", "skeleton cannot be null.");
 			if (animationsChanged) AnimationsChanged();
-
-//			if (animationsToRemove.Count != 0) {
-//				foreach (var a in animationsToRemove)
-//					a.SetKeyedItemsToSetupPose(skeleton);
-//			}
 
 			var events = this.events;
 

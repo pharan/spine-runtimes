@@ -150,9 +150,9 @@ namespace Spine.Unity {
 		/// <param name="buffer">Correctly-sized buffer. Use attachment's .WorldVerticesLength to get the correct size. If null, a new Vector2[] of the correct size will be allocated.</param>
 		public static Vector2[] GetWorldVertices (this VertexAttachment a, Slot slot, Vector2[] buffer) {
 			int worldVertsLength = a.worldVerticesLength;
-			buffer = buffer ?? new Vector2[worldVertsLength];
-
-			if (buffer.Length < worldVertsLength) throw new System.ArgumentException(string.Format("Vector2 buffer too small. {0} requires an array of size {1}. Use the attachment's .WorldVerticesLength to get the correct size.", a.Name, worldVertsLength), "buffer");
+			int bufferTargetSize = worldVertsLength >> 1;
+			buffer = buffer ?? new Vector2[bufferTargetSize];
+			if (buffer.Length < bufferTargetSize) throw new System.ArgumentException(string.Format("Vector2 buffer too small. {0} requires an array of size {1}. Use the attachment's .WorldVerticesLength to get the correct size.", a.Name, worldVertsLength), "buffer");
 			
 			var floats = new float[worldVertsLength];
 			a.ComputeWorldVertices(slot, floats);

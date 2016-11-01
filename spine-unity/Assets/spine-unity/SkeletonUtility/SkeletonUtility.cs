@@ -141,13 +141,12 @@ namespace Spine.Unity {
 				skeletonAnimation.UpdateLocal += UpdateLocal;
 			}
 
-
 			CollectBones();
 		}
 
 		void Start () {
 			//recollect because order of operations failure when switching between game mode and edit mode...
-			//		CollectBones();
+			CollectBones();
 		}
 
 		void OnDisable () {
@@ -195,22 +194,25 @@ namespace Spine.Unity {
 		}
 
 		public void CollectBones () {
-			if (skeletonRenderer.skeleton == null)
-				return;
+			var skeleton = skeletonRenderer.skeleton;
+			if (skeleton == null) return;
 
 			if (boneRoot != null) {
-				List<string> constraintTargetNames = new List<string>();
-
-				ExposedList<IkConstraint> ikConstraints = skeletonRenderer.skeleton.IkConstraints;
+				var constraintTargets = new List<System.Object>();
+				var ikConstraints = skeleton.IkConstraints;
 				for (int i = 0, n = ikConstraints.Count; i < n; i++)
-					constraintTargetNames.Add(ikConstraints.Items[i].Target.Data.Name);
+					constraintTargets.Add(ikConstraints.Items[i].target);
+				
+				var transformConstraints = skeleton.TransformConstraints;
+				for (int i = 0, n = transformConstraints.Count; i < n; i++)
+					constraintTargets.Add(transformConstraints.Items[i].target);
 
 				var utilityBones = this.utilityBones;
 				for (int i = 0, n = utilityBones.Count; i < n; i++) {
 					var b = utilityBones[i];
 					if (b.bone == null) return;
-					hasTransformBones |= b.mode == SkeletonUtilityBone.Mode.Override;
-					hasUtilityConstraints |= constraintTargetNames.Contains(b.bone.Data.Name);
+					hasTransformBones |= (b.mode == SkeletonUtilityBone.Mode.Override);
+					hasUtilityConstraints |= constraintTargets.Contains(b.bone);
 				}
 
 				hasUtilityConstraints |= utilityConstraints.Count > 0;
@@ -218,6 +220,7 @@ namespace Spine.Unity {
 				if (skeletonAnimation != null) {
 					skeletonAnimation.UpdateWorld -= UpdateWorld;
 					skeletonAnimation.UpdateComplete -= UpdateComplete;
+
 					if (hasTransformBones || hasUtilityConstraints)
 						skeletonAnimation.UpdateWorld += UpdateWorld;
 					
